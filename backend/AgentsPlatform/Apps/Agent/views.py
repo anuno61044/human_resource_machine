@@ -6,8 +6,20 @@ from .serializer import AgentSerializer
 
 @api_view(['GET'])
 def get_agents(request):
-    agents = Agent.objects.all()
-    serializer = AgentSerializer(agents, many=True)
+    # Obtener los valores de la propiedad 'function' desde el parámetro GET
+    function_values = request.GET.getlist('function')
+    
+    if not function_values:
+        agents = Agent.objects.all()
+        serializer = AgentSerializer(agents, many=True)
+        return Response(serializer.data)
+    
+    # Filtrar los agentes por las propiedades 'function'
+    filtered_agents = Agent.objects.filter(function__in=function_values)
+             
+    # Serializar los agentes filtrados
+    serializer = AgentSerializer(filtered_agents, many=True)
+    
     return Response(serializer.data)
 
 @api_view(['POST'])
