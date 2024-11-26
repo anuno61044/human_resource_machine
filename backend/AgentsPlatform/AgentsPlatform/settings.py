@@ -40,7 +40,8 @@ INSTALLED_APPS = [
     'rest_framework',
     'Apps.Functionality',
     'Apps.Agent',
-    'Apps.Solution'
+    'Apps.Solution',
+    'corsheaders',
 ]
 
 MIDDLEWARE = [
@@ -51,6 +52,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
 ]
 
 ROOT_URLCONF = 'AgentsPlatform.urls'
@@ -125,3 +127,6 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Permitir todas las orígenes (para entorno de desarrollo) 
+CORS_ALLOW_ALL_ORIGINS = True
