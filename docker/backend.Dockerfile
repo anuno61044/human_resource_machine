@@ -7,5 +7,3 @@ COPY requirements.txt .
 
 RUN pip install -r requirements.txt
 RUN chmod +x ./backend.sh
-
-RUN apk add --no-cache ffmpeg
