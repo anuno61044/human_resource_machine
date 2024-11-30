@@ -1,16 +1,22 @@
 import { Flex, Heading, Image } from "@chakra-ui/react";
 import { Button } from "../ui/button";
+import { useNavigate } from "react-router-dom";
 
 function Navbar() {
+
+  const navigate = useNavigate()
+
   return (
-    <Flex bg="green" justifyContent='space-between' direction='row'padding='0px 20px' h='180px'>
+    <Flex bg="green" justifyContent='space-between' direction='row'padding='0px 20px' h='80px'>
       <Flex alignItems='center'>
         <Image src="../../../public/hrm_icon.jpeg" borderRadius='10px' alt="" h="40px" />
-        <Button variant="plain" size="sm" color='green.100'>
-          Products
+        <Button variant="plain" size="sm" color='green.100' onClick={() => navigate('/')}>
+          Home
+        </Button>
+        <Button variant="plain" size="sm" color='green.100' onClick={() => navigate('/facilities')}>
+          Admin Facilities
         </Button>
       </Flex>
-      <Heading size='3xl' color='green.100' alignContent='center'>Human Resource Machine</Heading>
       <Flex alignItems='center'>
         <Button variant="plain" size="sm" color='green.100'>
           Log In

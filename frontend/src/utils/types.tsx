@@ -5,3 +5,8 @@ export interface Agent {
     name: string;
     memory: number;
 }
+
+export interface Functionality {
+    id: number;
+    name: string;
+}

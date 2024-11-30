@@ -1,4 +1,4 @@
-import { Button, Flex, Grid, Heading, Textarea } from "@chakra-ui/react";
+import { Button, Flex, Grid, Heading, Input, Textarea } from "@chakra-ui/react";
 import Navbar from "../../components/Navbar/Navbar";
 import InputBox from "../../components/InputBox/InputBox";
 import "./styles.css";
@@ -13,7 +13,6 @@ function Home() {
 
   const [agents, setAgents] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchAgents();
@@ -23,12 +22,10 @@ function Home() {
   const fetchAgents = async () => {
     try {
       setIsLoading(true);
-      const response = await axios.get("http://127.0.0.1:8000/appAgent/agent/"); // Reemplaza esta URL con la real de tu API
-      setAgents(response.data)
-      setError(null);
+      const response = await axios.get("http://localhost:8000/appAgent/agent/"); // Reemplaza esta URL con la real de tu API
+      setAgents(response.data);
     } catch (err) {
       console.error(err);
-      setError("Error al cargar los agentes");
     } finally {
       setIsLoading(false);
     }
@@ -49,7 +46,7 @@ function Home() {
 
   return (
     <>
-      <Flex direction="column" h="100vh">
+      <Flex direction="column" minHeight="100vh">
         <Navbar />
         <Grid templateColumns="150px 6fr 400px">
           <Flex bg="gray.300" direction="column" align="center" p="30px">
@@ -133,32 +130,39 @@ function Home() {
                 </Button>
               </Flex>
             ) : (
-              <Flex>
-                <Button
-                  borderBottomRadius="0"
-                  borderTopRadius="10px"
-                  marginStart="20px"
-                  variant="subtle"
-                  bg="gray.200"
-                  color="gray"
-                  fontSize="25px"
-                  onClick={() => setIsNativeCode(true)}
-                >
-                  Native
-                </Button>
-                <Button
-                  borderTopRadius="10px"
-                  borderBottomRadius="0"
-                  marginStart="10px"
-                  variant="subtle"
-                  bg="white"
-                  color="gray"
-                  fontSize="25px"
-                  onClick={() => setIsNativeCode(false)}
-                >
-                  by Agents
-                </Button>
-              </Flex>
+              <>
+                <Flex align='center' marginBottom='30px'>
+                  <Heading color='green' marginEnd='10px'>Nombre:</Heading>
+                  <Input color='black'>
+                  </Input>
+                </Flex>
+                <Flex>
+                  <Button
+                    borderBottomRadius="0"
+                    borderTopRadius="10px"
+                    marginStart="20px"
+                    variant="subtle"
+                    bg="gray.200"
+                    color="gray"
+                    fontSize="25px"
+                    onClick={() => setIsNativeCode(true)}
+                  >
+                    Native
+                  </Button>
+                  <Button
+                    borderTopRadius="10px"
+                    borderBottomRadius="0"
+                    marginStart="10px"
+                    variant="subtle"
+                    bg="white"
+                    color="gray"
+                    fontSize="25px"
+                    onClick={() => setIsNativeCode(false)}
+                  >
+                    by Agents
+                  </Button>
+                </Flex>
+              </>
             )}
             <Flex
               bg="white"
@@ -175,6 +179,7 @@ function Home() {
                     width="100%"
                     borderRadius="20px"
                     textWrap="nowrap"
+                    color="black"
                   />
                 </>
               ) : (
