@@ -1,7 +1,7 @@
 import { Box } from '@chakra-ui/react';
 
 interface InputBoxProps {
-  num: number ;
+  num: string ;
 }
 
 function InputBox({ num }: InputBoxProps) {

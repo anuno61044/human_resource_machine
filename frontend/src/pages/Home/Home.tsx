@@ -1,22 +1,130 @@
-import { Button, Flex, Grid, Heading, Input, Textarea } from "@chakra-ui/react";
+import {
+  Box,
+  Button,
+  Flex,
+  Grid,
+  Heading,
+  Input,
+  Select,
+  Separator,
+  Textarea,
+} from "@chakra-ui/react";
 import Navbar from "../../components/Navbar/Navbar";
 import InputBox from "../../components/InputBox/InputBox";
 import "./styles.css";
 import AgentBox from "../../components/AgentBox/AgentBox";
 import { useEffect, useState } from "react";
-import { Agent } from "../../utils/types";
+import { Agent, Functionality } from "../../utils/types";
 import AgentCode from "../../components/AgentCode/AgentCode";
 import axios from "axios";
+import { MultiSelect } from "react-multi-select-component";
+import { Option } from "react-multi-select-component";
+import InitialAgentBox from "../../components/InitialAgentBox/InitialAgentBox";
+import InitialAgentCode from "../../components/InitialAgentCode/InitialAgentCode";
+import InitialAgentCodeMemory from "../../components/InitialAgentCode/InitialAgentCodeMemory";
 
 function Home() {
-  const numbers = [2, 23, 4, 63, 7, 19, 42, 0, -24];
+  const initialAgents = [
+    {
+      id: 0,
+      name: "inbox",
+      memory: 0,
+      pythonCode: "",
+      _type: false,
+      function: [],
+    },
+    {
+      id: 0,
+      name: "outbox",
+      memory: 0,
+      pythonCode: "",
+      _type: false,
+      function: [],
+    },
+    {
+      id: -1,
+      name: "copyto",
+      memory: 0,
+      pythonCode: "",
+      _type: false,
+      function: [],
+    },
+    {
+      id: -1,
+      name: "copyfrom",
+      memory: 0,
+      pythonCode: "",
+      _type: false,
+      function: [],
+    },
+    {
+      id: -1,
+      name: "jump",
+      memory: 0,
+      pythonCode: "",
+      _type: false,
+      function: [],
+    },
+    {
+      id: -1,
+      name: "jumpLZ",
+      memory: 0,
+      pythonCode: "",
+      _type: false,
+      function: [],
+    },
+    {
+      id: -1,
+      name: "jumpEZ",
+      memory: 0,
+      pythonCode: "",
+      _type: false,
+      function: [],
+    },
+    {
+      id: -1,
+      name: "jumpGZ",
+      memory: 0,
+      pythonCode: "",
+      _type: false,
+      function: [],
+    },
+  ];
 
-  const [agents, setAgents] = useState([]);
+  const [numbers, setNumbers] = useState<string[]>([]);
+  const [numberInput, setNumberInput] = useState<string>("0");
+  const [output, setOutput] = useState<string[]>([]);
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [functionalities, setFunctionalities] = useState<Functionality[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedAgents, setSelectedAgents] = useState<Agent[]>([]);
+  const [isNativeCode, setIsNativeCode] = useState(true);
+  const [selectedValues, setSelectedValues] = useState<Option[]>([]);
+  const [agentShow, setAgentShow] = useState<Agent>({
+    id: 0,
+    name: "",
+    memory: 0,
+    pythonCode: "",
+    _type: true,
+    function: [],
+  });
 
   useEffect(() => {
     fetchAgents();
+    fetchFunctionalities();
   }, []);
+
+  // Función para obtener los agentes
+  const fetchFunctionalities = async () => {
+    try {
+      const response = await axios.get(
+        "http://localhost:8000/appFunctionality/functionality/"
+      ); // Reemplaza esta URL con la real de tu API
+      setFunctionalities(response.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   // Función para obtener los agentes
   const fetchAgents = async () => {
@@ -31,46 +139,235 @@ function Home() {
     }
   };
 
-  const [selectedAgents, setSelectedAgents] = useState<Agent[]>([]);
-  const [isNativeCode, setIsNativeCode] = useState(true);
+  // Crear o editar un agente
+  const handleSubmitAgent = async () => {
+    // Handle Name
+    let name = agentShow.name;
 
-  const addAgent = (agent: Agent) => {
-    console.log("agente añadido");
-    setSelectedAgents([...selectedAgents, agent]);
+    // Handle Code
+    let pythonCode = "";
+    if (isNativeCode) {
+      pythonCode = agentShow.pythonCode;
+    } else {
+      pythonCode = "[";
+      for (const ag of selectedAgents) {
+        if (ag.id == 0) {
+          pythonCode += `\"${ag.name}\" ,`;
+        } else if (ag.id == -1) {
+          pythonCode += `(\"${ag.name}\",${ag.memory}), `;
+        } else {
+          pythonCode += `${ag.id}, `;
+        }
+      }
+      if (pythonCode.endsWith(", ")) {
+        pythonCode = pythonCode.slice(0, -2);
+        pythonCode += "]";
+      }
+    }
+
+    // Handle functionalities
+    const functions = selectedValues.map((f) => f.value.id);
+
+    if (agentShow.id == 0) {
+      try {
+        await axios.post("http://localhost:8000/appAgent/agent/create/", {
+          name: name,
+          memory: 0,
+          pythonCode: pythonCode,
+          _type: isNativeCode,
+          function: functions,
+        });
+      } catch (err) {
+        console.error(err);
+      } finally {
+        fetchAgents();
+      }
+    } else {
+      try {
+        await axios.put(
+          `http://localhost:8000/appAgent/agent/${agentShow.id}`,
+          {
+            name: name,
+            memory: agentShow.memory,
+            pythonCode: pythonCode,
+            _type: isNativeCode,
+            function: functions,
+          }
+        );
+      } catch (err) {
+        console.error(err);
+      } finally {
+        fetchAgents();
+        setAgentShow({
+          id: 0,
+          name: "",
+          memory: 0,
+          pythonCode: "",
+          _type: true,
+          function: [],
+        });
+      }
+    }
   };
 
-  const removeAgent = (index: number) => {
-    console.log("agente removido");
-    setSelectedAgents(selectedAgents.filter((_, i) => i !== index));
+  const handleEditAgent = async (agent: Agent) => {
+    setAgentShow(agent);
+
+    setSelectedValues(
+      agent.function.map((e) => ({
+        label: functionalities.find((f) => f.id == e).name,
+        value: functionalities.find((f) => f.id == e),
+      }))
+    );
+
+    if (!agent._type) {
+      setIsNativeCode(false);
+
+      const code_agents = JSON.parse(agent.pythonCode);
+      console.log(code_agents);
+    } else {
+      setIsNativeCode(true);
+    }
   };
+
+  const handleDeleteAgent = async (id: number) => {
+    try {
+      await axios.delete(`http://localhost:8000/appAgent/agent/${id}`);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      fetchAgents();
+    }
+  };
+
+  const handleSolution = async () => {
+
+    // Handle Code
+    let pythonCode = "";
+    if (isNativeCode) {
+      pythonCode = agentShow.pythonCode;
+    } else {
+      pythonCode = "[";
+      for (const ag of selectedAgents) {
+        if (ag.id == 0) {
+          pythonCode += `\"${ag.name}\" ,`;
+        } else if (ag.id == -1) {
+          pythonCode += `(\"${ag.name}\",${ag.memory}), `;
+        } else {
+          pythonCode += `${ag.id}, `;
+        }
+      }
+      if (pythonCode.endsWith(", ")) {
+        pythonCode = pythonCode.slice(0, -2);
+        pythonCode += "]";
+      }
+    }
+
+    console.log(pythonCode)
+  }
 
   return (
     <>
       <Flex direction="column" minHeight="100vh">
         <Navbar />
-        <Grid templateColumns="150px 6fr 400px">
+
+        <Grid templateColumns="150px auto 400px 150px">
+          {/* INPUT AREA */}
           <Flex bg="gray.300" direction="column" align="center" p="30px">
             <Heading size="4xl" color="gray.600" paddingBottom="30px">
               Input
             </Heading>
+            <Separator marginBottom="20px" />
+            <Flex marginBottom="20px" direction="column" align="center">
+              <Input
+                type="number"
+                w="70px"
+                border="1px solid #6e6d6d8c"
+                color="black"
+                value={numberInput}
+                onChange={(e) => setNumberInput(e.target.value)}
+              />
+              <Flex marginTop="10px">
+                <Button
+                  w="45px"
+                  color="white"
+                  colorPalette="green"
+                  fontSize="20px"
+                  onClick={() => setNumbers([...numbers, numberInput])}
+                >
+                  +
+                </Button>
+                <Button
+                  w="45px"
+                  color="white"
+                  colorPalette="red"
+                  fontSize="20px"
+                  marginStart="10px"
+                  onClick={() => setNumbers([...numbers.slice(0, -1)])}
+                >
+                  -
+                </Button>
+              </Flex>
+            </Flex>
+            <Separator marginBottom="20px" />
             {numbers.map((item) => (
               <InputBox num={item} />
             ))}
           </Flex>
+
+          {/* AGENTS AREA */}
           <Flex bg="gray.100" p="30px" direction="column">
-            <Heading
-              size="5xl"
-              color="gray.600"
-              paddingBottom="20px"
-              textAlign="center"
-            >
-              Agents
+            <Heading size="4xl" color="gray.600" paddingBottom="30px" textAlign='center'>
+              Agent List
             </Heading>
             <Flex h="fit" flexWrap="wrap" p="40px" gap="30px" justify="center">
+              {/* Agentes no editables */}
+              {initialAgents.map((agent: Agent) => (
+                <Flex
+                  align="center"
+                  justify="space-between"
+                  width="100%"
+                  borderBottom="1px solid #d4d4d8"
+                  padding="15px 0"
+                >
+                  <Flex>
+                    <InitialAgentBox agent={agent}></InitialAgentBox>
+                    <Flex align="center" marginStart="20px">
+                      {agent.function.map((id) => (
+                        <Flex
+                          bg="blue"
+                          h="fit"
+                          p="2px 6px"
+                          borderRadius="10px"
+                          marginEnd="10px"
+                        >
+                          <Heading fontSize="20px" color="white">
+                            {
+                              functionalities.find((func) => func.id === id)
+                                ?.name
+                            }
+                          </Heading>
+                        </Flex>
+                      ))}
+                    </Flex>
+                  </Flex>
+                  <Button
+                    variant="outline"
+                    color="green"
+                    fontSize="25px"
+                    onClick={() =>
+                      setSelectedAgents([...selectedAgents, agent])
+                    }
+                  >
+                    Add
+                  </Button>
+                </Flex>
+              ))}
+
               {isLoading ? (
                 <Heading>Cargando ...</Heading>
               ) : (
-                agents.map((agent) => (
+                agents.map((agent: Agent) => (
                   <Flex
                     align="center"
                     justify="space-between"
@@ -78,21 +375,67 @@ function Home() {
                     borderBottom="1px solid #d4d4d8"
                     padding="15px 0"
                   >
-                    <AgentBox agent={agent}></AgentBox>
-                    <Button
-                      variant="outline"
-                      color="green"
-                      fontSize="25px"
-                      onClick={() => addAgent(agent)}
-                    >
-                      Add
-                    </Button>
+                    <Flex>
+                      <AgentBox agent={agent}></AgentBox>
+                      <Flex align="center" marginStart="20px">
+                        {agent.function.map((id) => (
+                          <Flex
+                            bg="blue"
+                            h="fit"
+                            p="2px 6px"
+                            borderRadius="10px"
+                            marginEnd="10px"
+                          >
+                            <Heading fontSize="20px" color="white">
+                              {
+                                functionalities.find((func) => func.id === id)
+                                  ?.name
+                              }
+                            </Heading>
+                          </Flex>
+                        ))}
+                      </Flex>
+                    </Flex>
+                    <Flex>
+                      <Button
+                        variant="outline"
+                        color="green"
+                        marginEnd="10px"
+                        fontSize="25px"
+                        onClick={() =>
+                          setSelectedAgents([...selectedAgents, agent])
+                        }
+                      >
+                        Add
+                      </Button>
+                      <Button
+                        variant="outline"
+                        marginEnd="10px"
+                        color="gray"
+                        fontSize="25px"
+                        onClick={() => handleEditAgent(agent)}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        variant="outline"
+                        color="red"
+                        fontSize="25px"
+                        onClick={() => handleDeleteAgent(agent.id)}
+                      >
+                        Delete
+                      </Button>
+                    </Flex>
                   </Flex>
                 ))
               )}
             </Flex>
           </Flex>
-          <Flex bg="gray.300" direction="column" p="30px">
+
+          {/* CODE AREA */}
+          <Flex bg="gray.300" direction="column" p="30px" color="black">
+            
+            {/* HEAD */}
             <Heading
               size="4xl"
               h="fit"
@@ -102,6 +445,29 @@ function Home() {
             >
               Code
             </Heading>
+
+            {/* AGENT NAME */}
+            <Flex align="center" marginBottom="30px">
+              <Heading color="gray.600" marginEnd="10px">
+                Nombre:
+              </Heading>
+              <Input
+                color="black"
+                value={agentShow.name}
+                onChange={(e) =>
+                  setAgentShow({
+                    id: agentShow.id,
+                    name: e.target.value,
+                    pythonCode: agentShow.pythonCode,
+                    function: agentShow.function,
+                    memory: agentShow.memory,
+                    _type: agentShow._type,
+                  })
+                }
+              />
+            </Flex>
+
+            {/* TAGS */}
             {isNativeCode ? (
               <Flex>
                 <Button
@@ -131,11 +497,6 @@ function Home() {
               </Flex>
             ) : (
               <>
-                <Flex align='center' marginBottom='30px'>
-                  <Heading color='green' marginEnd='10px'>Nombre:</Heading>
-                  <Input color='black'>
-                  </Input>
-                </Flex>
                 <Flex>
                   <Button
                     borderBottomRadius="0"
@@ -164,12 +525,16 @@ function Home() {
                 </Flex>
               </>
             )}
+
+            {/* CODE */}
             <Flex
               bg="white"
               borderRadius="20px"
               h="500px"
               direction="column"
               align="center"
+              marginBottom="10px"
+              overflowY='scroll'
             >
               {isNativeCode ? (
                 <>
@@ -180,6 +545,18 @@ function Home() {
                     borderRadius="20px"
                     textWrap="nowrap"
                     color="black"
+                    border="none"
+                    value={agentShow.pythonCode}
+                    onChange={(e) =>
+                      setAgentShow({
+                        id: agentShow.id,
+                        name: agentShow.name,
+                        pythonCode: e.target.value,
+                        function: agentShow.function,
+                        memory: agentShow.memory,
+                        _type: agentShow._type,
+                      })
+                    }
                   />
                 </>
               ) : (
@@ -191,12 +568,29 @@ function Home() {
                     width="90%"
                     padding="15px 0"
                   >
-                    <AgentCode index={index} agent={agent}></AgentCode>
+                    {initialAgents.some((e) => e.id == agent.id) &&
+                      agent.id == 0 && <InitialAgentCode agent={agent} />}
+                    {initialAgents.some((e) => e.id == agent.id) &&
+                      agent.id == -1 && (
+                        <InitialAgentCodeMemory
+                          index={index}
+                          agent={agent}
+                          selectedAgents={selectedAgents}
+                          setSelectedAgents={setSelectedAgents}
+                        />
+                      )}
+                    {!initialAgents.some((e) => e.id == agent.id) && (
+                      <AgentCode index={index} agent={agent} />
+                    )}
                     <Button
                       variant="outline"
                       color="red"
                       fontSize="25px"
-                      onClick={() => removeAgent(index)}
+                      onClick={() =>
+                        setSelectedAgents(
+                          selectedAgents.filter((_, i) => i !== index)
+                        )
+                      }
                     >
                       X
                     </Button>
@@ -204,14 +598,41 @@ function Home() {
                 ))
               )}
             </Flex>
+
+            <MultiSelect
+              options={functionalities.map((func) => ({
+                label: func.name,
+                value: func,
+              }))}
+              value={selectedValues}
+              onChange={setSelectedValues}
+              labelledBy="Select"
+            />
+
+            {/* BUTTONS */}
             <Flex margin="20px">
-              <Button>Create Agent</Button>
+              {agentShow.id == 0 ? (
+                <Button onClick={handleSubmitAgent}>Create Agent</Button>
+              ) : (
+                <Button onClick={handleSubmitAgent}>Edit Agent</Button>
+              )}
               {!isNativeCode && (
-                <Button marginStart="10px" colorPalette="blue">
+                <Button marginStart="10px" colorPalette="green" onClick={handleSolution}>
                   Run Solution
                 </Button>
               )}
             </Flex>
+          </Flex>
+
+          {/* OUTPUT AREA */}
+          <Flex bg="gray.100" direction="column" align="center" p="30px">
+            <Heading size="4xl" color="gray.600" paddingBottom="30px">
+              Output
+            </Heading>
+            <Separator marginBottom="20px" />
+            {output.map((item) => (
+              <InputBox num={item} />
+            ))}
           </Flex>
         </Grid>
       </Flex>
