@@ -32,7 +32,7 @@ def execute_no_native(agents, _input):
         
         elif _list[i]['name'] == "inbox":
             if len(input) == 0:
-                return output
+                break
             hand = input[0]
             del input[0]
 
@@ -49,7 +49,7 @@ def execute_no_native(agents, _input):
                 continue
 
         elif _list[i]['name'] == "jlz":
-            if hand > 0:
+            if hand < 0:
                 i = _list[i]['target']
                 continue
 
@@ -68,4 +68,5 @@ def execute_no_native(agents, _input):
         i = i + 1
     out = str(output)
     out = out.strip()
+    print("-----",out, "-------")
     return out
