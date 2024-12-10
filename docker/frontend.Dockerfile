@@ -5,7 +5,7 @@ FROM node:20-alpine
 WORKDIR /app
 
 # Copia los archivos package.json y package-lock.json
-COPY ./frontend/package*.json ./
+COPY ./frontend/package.json ./
 
 # Instala las dependencias
 RUN npm install

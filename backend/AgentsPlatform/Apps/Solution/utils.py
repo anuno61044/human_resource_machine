@@ -4,9 +4,24 @@ import json
 
 
 def execute_native(agent, input):
-    exec(agent.pythonCode)
-    name = agent.name + '(' + str(input) + ')'
-    answer = eval(name)
+    # Espacio de nombres compartido
+    namespace = {}
+
+    # Ejecutar el código del agente en el espacio de nombres
+    try:
+        exec(agent.pythonCode, namespace)  # El código de 'fib' se define aquí
+        print("Namespace después de exec:", namespace)  # Para verificar que la función 'fib' está definida
+
+        # Construir el nombre de la llamada
+        name = agent.name + '(' + str(input) + ')'
+
+        # Evaluar la expresión en el mismo espacio de nombres
+        answer = eval(name, namespace)
+        print('Respuesta:', answer)
+
+    except Exception as e:
+        print('Error al ejecutar:', str(e))
+
     return answer
 
 def execute_no_native(agents, _input):
@@ -20,8 +35,8 @@ def execute_no_native(agents, _input):
     while i < len(_list):
         if _list[i]['type'] == 'user':
             new_agent = Agent.objects.get(pk=int(_list[i]['id']))
-            print(new_agent.name)
-            print('memoria: ', memoria)
+            # print(new_agent.name)
+            # print('memoria: ', memoria)
             try:
                 if new_agent._type:
                     hand = execute_native(new_agent, memoria)

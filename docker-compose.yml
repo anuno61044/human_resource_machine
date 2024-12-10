@@ -31,22 +31,6 @@ services:
     working_dir: /app/frontend
     command: ["sh", "-c", "npm run dev"]
 
-  frontend2:
-    build:
-      context: .
-      dockerfile: docker/frontend.Dockerfile
-    container_name: frontend2
-    cap_add:
-      - NET_ADMIN
-    ports:
-      - 8081:8080
-    networks:
-      - clients
-    volumes:
-      - ./frontend:/app/frontend
-    working_dir: /app/frontend
-    command: ["sh", "-c", "npm run dev"]
-
   backend:
     build:
       context: .
