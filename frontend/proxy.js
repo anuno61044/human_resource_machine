@@ -8,6 +8,11 @@ const proxy = httpProxy.createProxyServer({});
 
 const server = http.createServer((req, res) => {
   proxy.web(req, res, { target: `${targetHost}:${targetPort}` }, (err) => {
+    
+    console.log(`url = ${targetHost}:${targetPort}`);
+    console.log(`request = ${req.url}`);
+
+
     if (err) {
       console.error('Error al reenviar la solicitud:', err);
       res.writeHead(500, { 'Content-Type': 'text/plain' });

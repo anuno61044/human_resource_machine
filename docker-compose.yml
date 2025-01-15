@@ -29,7 +29,7 @@ services:
     volumes:
       - ./frontend:/app/frontend
     working_dir: /app/frontend
-    command: ["sh", "-c", "npm run dev"]
+    command: ["sh", "-c", "node proxy.js & npm run dev"]
 
   backend:
     build:
