@@ -13,7 +13,9 @@ services:
         ipv4_address: 10.0.10.254
       servers:
         ipv4_address: 10.0.11.254
-    command: ["sleep", "infinity"] # Mantener el contenedor en ejecución
+    ports:
+      - 5000:5000
+    command: ["python", "router.py"] # Mantener el contenedor en ejecución
 
   frontend:
     build:
@@ -41,12 +43,28 @@ services:
     networks:
       - servers
     ports:
-      - 8000:8000
+      - 8001:8000
     volumes:
       - ./backend:/app/backend
     working_dir: /app/backend
     command: ["sh", "-c", "python AgentsPlatform/manage.py runserver 0.0.0.0:8000"] # Comando para iniciar el servidor de desarrollo de Django
-
+  
+  backend2:
+    build:
+      context: .
+      dockerfile: docker/backend.Dockerfile
+    container_name: backend2
+    cap_add:
+      - NET_ADMIN
+    networks:
+      - servers
+    ports:
+      - 8002:8000
+    volumes:
+      - ./backend:/app/backend
+    working_dir: /app/backend
+    command: ["sh", "-c", "python AgentsPlatform/manage.py runserver 0.0.0.0:8000"] # Comando para iniciar el servidor de desarrollo de Django
+  
 networks:
   clients:
     driver: bridge

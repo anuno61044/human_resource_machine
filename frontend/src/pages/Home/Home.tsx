@@ -118,7 +118,7 @@ function Home() {
   const fetchFunctionalities = async () => {
     try {
       const response = await axios.get(
-        "http://localhost:8000/appFunctionality/functionality/"
+        "http://10.0.10.254:5000/appFunctionality/functionality/"
       ); // Reemplaza esta URL con la real de tu API
       setFunctionalities(response.data);
     } catch (err) {
@@ -130,7 +130,7 @@ function Home() {
   const fetchAgents = async () => {
     try {
       setIsLoading(true);
-      const response = await axios.get("http://localhost:8000/appAgent/agent/"); // Reemplaza esta URL con la real de tu API
+      const response = await axios.get("http://10.0.10.254:5000/appAgent/agent/"); // Reemplaza esta URL con la real de tu API
       setAgents(response.data);
     } catch (err) {
       console.error(err);
@@ -179,7 +179,7 @@ function Home() {
 
     if (agentShow.id == 0) {
       try {
-        await axios.post("http://localhost:8000/appAgent/agent/create/", {
+        await axios.post("http://10.0.10.254:5000/appAgent/agent/create/", {
           name: name,
           memory: 0,
           pythonCode: pythonCode,
@@ -194,7 +194,7 @@ function Home() {
     } else {
       try {
         await axios.put(
-          `http://localhost:8000/appAgent/agent/${agentShow.id}`,
+          `http://10.0.10.254:5000/appAgent/agent/${agentShow.id}`,
           {
             name: name,
             memory: agentShow.memory,
@@ -275,7 +275,7 @@ function Home() {
 
   const handleDeleteAgent = async (id: number) => {
     try {
-      await axios.delete(`http://localhost:8000/appAgent/agent/${id}`);
+      await axios.delete(`http://10.0.10.254:5000/appAgent/agent/${id}`);
     } catch (err) {
       console.error(err);
     } finally {
@@ -325,7 +325,7 @@ function Home() {
     console.log(input)
 
     try {
-      const response = await axios.post("http://localhost:8000/appSolution/solution/", {
+      const response = await axios.post("http://10.0.10.254:5000/appSolution/solution/", {
         input: input,
         agents: pythonCode
       });

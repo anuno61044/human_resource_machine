@@ -22,5 +22,5 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(8000, () => {
-  console.log(`Proxy server escuchando en http://localhost:8000`);
+  console.log(`Proxy server escuchando en http://10.0.10.254:5000`);
 });

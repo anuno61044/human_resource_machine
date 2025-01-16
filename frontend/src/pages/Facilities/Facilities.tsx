@@ -22,7 +22,7 @@ function Facilities() {
     try {
       setIsLoading(true);
       const response = await axios.get(
-        "http://localhost:8000/appFunctionality/functionality/"
+        "http://10.0.10.254:5000/appFunctionality/functionality/"
       ); // Reemplaza esta URL con la real de tu API
       setFunctionalities(response.data);
     } catch (err) {
@@ -36,7 +36,7 @@ function Facilities() {
   const fetchFunctionality = async (id: number) => {
     try {
       const response = await axios.get(
-        `http://localhost:8000/appFunctionality/functionality/${id}`
+        `http://10.0.10.254:5000/appFunctionality/functionality/${id}`
       );
       setFunctionality(response.data);
     } catch (err) {
@@ -57,7 +57,7 @@ function Facilities() {
     if (input_functionality.id == 0) {
       try {
         await axios.post(
-          `http://localhost:8000/appFunctionality/functionality/create/`,
+          `http://10.0.10.254:5000/appFunctionality/functionality/create/`,
           { name: input_functionality.name }
         );
       } catch (err) {
@@ -67,7 +67,7 @@ function Facilities() {
     else {
       try {
         await axios.put(
-          `http://localhost:8000/appFunctionality/functionality/${input_functionality.id}`,
+          `http://10.0.10.254:5000/appFunctionality/functionality/${input_functionality.id}`,
           { name: input_functionality.name }
         );
       } catch (err) {
@@ -82,7 +82,7 @@ function Facilities() {
   const deleteFunc = async (id:number) => {
     try {
       await axios.delete(
-        `http://localhost:8000/appFunctionality/functionality/${id}`
+        `http://10.0.10.254:5000/appFunctionality/functionality/${id}`
       );
     } catch (err) {
       console.error(err);
