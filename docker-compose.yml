@@ -1,11 +1,11 @@
 version: "3.8"
 
 services:
-  router:
+  router1:
     build:
       context: .
       dockerfile: docker/router.Dockerfile
-    container_name: router
+    container_name: router1
     cap_add:
       - NET_ADMIN
     networks:
@@ -27,9 +27,9 @@ services:
     networks:
       - clients
     volumes:
-      - ./frontend:/app/frontend
+      - ./frontend/src:/app/src
     working_dir: /app/frontend
-    command: ["sh", "-c", "node proxy.js & npm run dev"]
+    command: ["sh", "-c", "npm run dev"]
 
   backend:
     build:
@@ -41,7 +41,7 @@ services:
     networks:
       - servers
     ports:
-      - 8000:8000
+      - 8001:8000
     volumes:
       - ./backend:/app/backend
     working_dir: /app/backend

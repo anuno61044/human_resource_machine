@@ -3,13 +3,23 @@ from rest_framework.response import Response
 from rest_framework import status
 from .models import Functionality
 from .serializer import FunctionalitySerializer
+from venv import logger
 
 @api_view(['GET'])
 def get_functionalities(request):
+    logger.error('entre aqui en el get')
+    print('desde el print')
     functionalities = Functionality.objects.all()
     serializer = FunctionalitySerializer(functionalities, many=True)
     
     return Response(serializer.data)
+
+@api_view(['GET'])
+def get_hello(request):
+    logger.error('entre aqui en el get')
+    print('desde el print')
+    
+    return Response('hello')
 
 @api_view(['POST'])
 def create_functionality(request):
@@ -35,6 +45,7 @@ def functionality_detail(request,pk):
     elif request.method == 'PUT':
         serializer = FunctionalitySerializer(functionality, data=request.data)
         if serializer.is_valid():
+            functionality.delete()
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

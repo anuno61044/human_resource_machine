@@ -175,7 +175,7 @@ function Home() {
     console.log(pythonCode)
 
     // Handle functionalities
-    const functions = selectedValues.map((f) => f.value.id);
+    const functions = selectedValues.map((f) => f.value.name);
 
     if (agentShow.id == 0) {
       try {
@@ -194,7 +194,7 @@ function Home() {
     } else {
       try {
         await axios.put(
-          `http://localhost:8000/appAgent/agent/${agentShow.id}`,
+          `http://localhost:8000/appAgent/agent/${agentShow.name}`,
           {
             name: name,
             memory: agentShow.memory,
@@ -273,9 +273,9 @@ function Home() {
     setSelectedAgents(agent_arr)
   };
 
-  const handleDeleteAgent = async (id: number) => {
+  const handleDeleteAgent = async (agent_name: string) => {
     try {
-      await axios.delete(`http://localhost:8000/appAgent/agent/${id}`);
+      await axios.delete(`http://localhost:8000/appAgent/agent/${agent_name}`);
     } catch (err) {
       console.error(err);
     } finally {
@@ -306,7 +306,7 @@ function Home() {
         } else {
           pythonCode += `{
             \"type\":\"user\",
-            \"id\":${ag.id}
+            \"name\":"${ag.name}"
           },`;
         }
       }
@@ -491,7 +491,7 @@ function Home() {
                         variant="outline"
                         color="red"
                         fontSize="25px"
-                        onClick={() => handleDeleteAgent(agent.id)}
+                        onClick={() => handleDeleteAgent(agent.name)}
                       >
                         Delete
                       </Button>

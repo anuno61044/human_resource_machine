@@ -29,12 +29,14 @@ def execute_no_native(agents, _input):
     memoria = [0] * 10
     output = []
     hand = 0
+    # print('agentesssssss', agents)
     _list = json.loads(agents)
     input = json.loads(_input)
     print(_list)
     while i < len(_list):
         if _list[i]['type'] == 'user':
-            new_agent = Agent.objects.get(pk=int(_list[i]['id']))
+            print('*********************************\n',_list[i], '\n*********************************\n')
+            new_agent = Agent.objects.get(pk=_list[i]['name'])
             # print(new_agent.name)
             # print('memoria: ', memoria)
             try:

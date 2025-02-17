@@ -1,133 +1,13 @@
-import hashlib
 import socket
-import sys
 import threading
+import sys
 import time
-from venv import logger
-import requests
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
-from rest_framework import status
-from .models import Agent
-from .serializer import AgentSerializer
+import hashlib
+import random
 
 BROADCAST_PORT = 50000 # Puedes cambiarlo
 SERVER_IP = socket.gethostbyname(socket.gethostname())
 BROADCAST_ADDRESS = '<broadcast>' 
-
-@api_view(['GET'])
-def get_agents(request):
-    # Obtener los valores de la propiedad 'function' desde el parámetro GET
-    function_values = request.GET.getlist('function')
-    
-    if not function_values:
-        agents = Agent.objects.all()
-        serializer = AgentSerializer(agents, many=True)
-        return Response(serializer.data)
-    
-    # Filtrar los agentes por las propiedades 'function'
-    filtered_agents = Agent.objects.filter(function__in=function_values)
-             
-    # Serializar los agentes filtrados
-    serializer = AgentSerializer(filtered_agents, many=True)
-    
-    return Response(serializer.data)
-
-@api_view(['POST'])
-def create_agent(request):
-    print(request.data["name"])
-    serializer = AgentSerializer(data=request.data)
-    if serializer.is_valid():
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-@api_view(['GET', 'PUT', 'DELETE'])
-def agent_detail(request,pk):
-    try:
-        agent = Agent.objects.get(pk=pk)
-    except Agent.DoesNotExist:
-        return Response(status=status.HTTP_404_NOT_FOUND)
-    
-    if request.method == 'GET':
-        print(agent.pythonCode)
-        serializer = AgentSerializer(agent)
-        return Response(serializer.data)
-    
-    elif request.method == 'PUT':
-        serializer = AgentSerializer(agent, data=request.data)
-        if serializer.is_valid():
-            agent.delete()
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
-    
-    elif request.method == 'DELETE':
-        agent.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
-  
-@api_view(['POST'])
-def chord(request):
-
-    option = int(request.data['op'])
-    data = request.data['data']
-    data_resp = None
-    
-    if data != None:
-        data = data.split(',')
-    logger.error(f"option: {option}")
-    if option == FIND_SUCCESSOR:
-        id = int(data[0])
-        data_resp = node.find_succ(id)
-    elif option == FIND_PREDECESSOR:
-        id = int(data[0])
-        data_resp = node.find_pred(id)
-    elif option == GET_SUCCESSOR:
-        data_resp = node.succ
-    elif option == GET_PREDECESSOR:
-        data_resp = node.pred
-        print("node_pred: ", node.pred)
-    elif option == NOTIFY:
-        id = int(data[0])
-        ip = data[1]
-        node.notify(ChordNodeReference(ip, node.port))
-    elif option == CLOSEST_PRECEDING_FINGER:
-        id = int(data[0])
-        data_resp = node.closest_preceding_finger(id)
-    elif option == NOTIFY1:
-        id = int(data[0])
-        ip = data[1]
-        node.notify1(ChordNodeReference(ip, node.port))
-    elif option == IS_ALIVE:
-        data_resp = 'alive'
-    elif option == STORE_KEY:
-        print(data)
-        key, value = data[1], data[2]
-        node.store_key(key, value)
-        print(node.data)
-        return node.data
-    if data_resp == 'alive':
-        response = data_resp
-        return Response(response)
-    elif data_resp:
-        #logger.error(data_resp)
-        response = Response(f'{data_resp.id},{data_resp.ip}')
-        return response
-    return Response(data_resp) 
-
-########################################################################################
-
-
-#######################################################################################
-def send_data(node_ip, **kwargs):
-    #try:
-    url = f"http://{node_ip}:8000/appAgent/agent/chord/"
-    response = requests.post(url, json=kwargs)
-    return response
-    #except:
-    #    logger.error(f"Error en Remote Call")
-        #return None
 
 # Operation codes
 FIND_SUCCESSOR = 1
@@ -149,42 +29,50 @@ class ChordNodeReference:
         self.ip = ip
         self.port = port
 
+    def _send_data(self, op: int, data: str = None) -> bytes:
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.connect((self.ip, self.port))
+                s.sendall(f'{op},{data}'.encode('utf-8'))
+                return s.recv(1024)
+        except Exception as e:
+            print(f"Error sending data: {e} operacion: {op} ")
+            return b''
+
     def find_successor(self, id: int) -> 'ChordNodeReference':
-        response = send_data(self.ip, op=FIND_SUCCESSOR,data=str(id)).json().split(',')
-        #logger.error(f"find_succesor: {response.data}")
-        
+        response = self._send_data(FIND_SUCCESSOR, str(id)).decode().split(',')
         return ChordNodeReference(response[1], self.port)
 
     def find_predecessor(self, id: int) -> 'ChordNodeReference':
-        response = send_data(self.ip,op=FIND_PREDECESSOR,data=str(id)).json().split(',')
+        response = self._send_data(FIND_PREDECESSOR, str(id)).decode().split(',')
         return ChordNodeReference(response[1], self.port)
 
     @property
     def succ(self) -> 'ChordNodeReference':
-        response = send_data(self.ip, op= GET_SUCCESSOR, data = None).json().split(',')
+        response = self._send_data(GET_SUCCESSOR).decode().split(',')
         return ChordNodeReference(response[1], self.port)
 
     @property
     def pred(self) -> 'ChordNodeReference':
-        response = send_data(self.ip, op=GET_PREDECESSOR, data=None).json().split(',')
+        response = self._send_data(GET_PREDECESSOR).decode().split(',')
         return ChordNodeReference(response[1], self.port)
 
     def notify(self, node: 'ChordNodeReference'):
-        send_data(self.ip, op=NOTIFY, data=f'{node.id},{node.ip}')
+        self._send_data(NOTIFY, f'{node.id},{node.ip}')
 
     def notify1(self, node: 'ChordNodeReference'):
-        send_data(self.ip, op=NOTIFY1, data=f'{node.id},{node.ip}')
+        self._send_data(NOTIFY1, f'{node.id},{node.ip}')
 
     def closest_preceding_finger(self, id: int) -> 'ChordNodeReference':
-        response = send_data(self.ip, op=CLOSEST_PRECEDING_FINGER, data=str(id)).json().split(',')
+        response = self._send_data(CLOSEST_PRECEDING_FINGER, str(id)).decode().split(',')
         return ChordNodeReference(response[1], self.port)
 
     def alive(self):
-        response = send_data(self.ip, op=IS_ALIVE).json().split(',')
+        response = self._send_data(IS_ALIVE).decode().split(',')
         return response
     
     def store_key(self, key: str, value: str):
-        send_data(self.ip, op=STORE_KEY, data=f'{key},{value}')
+        self._send_data(STORE_KEY, f'{key},{value}')
 
     def __str__(self) -> str:
         return f'{self.id},{self.ip},{self.port}'
@@ -192,8 +80,9 @@ class ChordNodeReference:
     def __repr__(self) -> str:
         return self.__str__()
 
+
 class ChordNode:
-    def __init__(self, ip: str, peerId = None, port: int = 8000, m: int = 160):
+    def __init__(self, ip: str, peerId = None, port: int = 4001, m: int = 160):
         self.id = getShaRepr(ip)
         self.ip = ip
         self.port = port
@@ -209,20 +98,25 @@ class ChordNode:
         threading.Thread(target=self.stabilize, daemon=True).start()  # Start stabilize thread
         threading.Thread(target=self.fix_fingers, daemon=True).start()  # Start fix fingers thread
 
-        #if peerId is not None:
-        #    threading.Thread(target=self.join, args=(ChordNodeReference(peerId, self.port),), daemon=True).start()
-
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Permite reutilizar la dirección
-        sock.bind(('', BROADCAST_PORT))
-
-        discovery_thread = threading.Thread(target=self.handle_discovery, args=(sock,))
-        discovery_thread.daemon = True  # El hilo se cierra cuando el programa principal termina
-        discovery_thread.start()
-        self.new_ip = self.discover_server()
-        print("discovery_ip: ", self.new_ip)
-        if self.new_ip is not None:
-            threading.Thread(target=self.join, args=(ChordNodeReference(self.new_ip, self.port),), daemon=True).start()
+        if peerId is not None:
+            threading.Thread(target=self.join, args=(ChordNodeReference(peerId, self.port),), daemon=True).start()
+        #sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        #sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Permite reutilizar la dirección
+        #sock.bind(('', BROADCAST_PORT))
+#
+        #print(f"Servidor escuchando en el puerto {BROADCAST_PORT}...")
+#
+        #discovery_thread = threading.Thread(target=self.handle_discovery, args=(sock,))
+        #discovery_thread.daemon = True  # El hilo se cierra cuando el programa principal termina
+        #discovery_thread.start()
+        #self.new_ip = self.discover_server()
+        #print("discovery_ip: ", self.new_ip)
+        #if self.new_ip is not None:
+        #    threading.Thread(target=self.join, args=(ChordNodeReference(self.new_ip, self.port),), daemon=True).start()
+        
+        #threading.Thread(target=self.start_server, daemon=True).start()
+        self.start_server()
+    
     @property
     def succ(self):
         return self.finger[0]
@@ -294,23 +188,22 @@ class ChordNode:
         time.sleep(5)
         """Join a Chord network using 'node' as an entry point."""
         self.pred = self.ref
-        logger.error("before find succc")
+        print("before find succc")
         self.succ = node.find_successor(self.id)
         self.succ2 = self.succ.succ
         self.succ3 = self.succ2.succ
-        #print(self.succ)
-        logger.error(f"self.succ: {self.succ} self.succ2: {self.succ2}")
+        print(self.succ)
+        print("self.succ: ", self.succ, "self.succ2: ", self.succ2)
 
     def stabilize(self):
         time.sleep(5)
 
         """Regular check for correct Chord structure."""
         while True:
-            logger.error(f'self.succ: {self.succ}')
             try:
                 if self.succ:
-                    print(self.succ)
                     x = self.succ.pred
+                    
                     if x.id != self.id:
                         if self.succ.id == self.id or self._inrange(x.id, self.id, self.succ.id):
                             self.succ = x
@@ -318,7 +211,7 @@ class ChordNode:
                     self.succ.notify(self.ref)
             except Exception as e:
                 try:
-                    logger.error("entro en el try")
+                    print("entro en el try")
                     x = self.succ2
                     self.succ = x
                     self.succ2 = self.succ.succ
@@ -342,11 +235,11 @@ class ChordNode:
                     time.sleep(1)
                     continue
 
-            logger.error(f"successor : {self.succ}  succ2 {self.succ2} succ3 {self.succ3} predecessor {self.pred}")
+            print(f"successor : {self.succ}  succ2 {self.succ2} succ3 {self.succ3} predecessor {self.pred}")
             time.sleep(5)
 
     def notify(self, node: 'ChordNodeReference'):
-        logger.error(f"en notify, yo: {self.ip} el entrante: {node.ip}")
+        print(f"en notify, yo: {self.ip} el entrante: {node.ip}")
         if node.id == self.id:
             return
         print(f"notify with node {node} self {self.ref} pred {self.pred}")
@@ -355,7 +248,7 @@ class ChordNode:
     
     def notify1(self, node: 'ChordNodeReference'):
         self.pred = node
-        logger.error(f"new notify por node {node} pred {self.pred}")
+        print(f"new notify por node {node} pred {self.pred}")
     
     def fix_fingers(self):
         time.sleep(5)
@@ -365,17 +258,12 @@ class ChordNode:
                 with self.lock:
                     self.finger[self.next] = self.find_succ((self.id + 2 ** self.next) % (2 ** self.m))
             time.sleep(10)
-    
-    def store_key(self, key, value):
-        key_hash = getShaRepr(key)
-        print("key: ", key, "hash: ", key_hash)
-        if self._inrange(key_hash, self.id, self.succ.id):
-            self.data[key] = value
-        else:
-            node = self.closest_preceding_finger(key_hash)
-            print("node_succ_key: ", node.id)
-            node.store_key(key, value)
-
+        #while True:
+        #    self.next = random.randint(0,self.m-1)
+        #    with self.lock:
+        #        self.finger[self.next] = self.find_succ((self.id + 2 ** self.next) % (2 ** self.m))
+        #    print(f'Finger table updated at index {self.next}: {self.finger[self.next]}')
+        #    time.sleep(10)
     def handle_discovery(self, sock):
         while True:
             try:
@@ -390,6 +278,7 @@ class ChordNode:
             except Exception as e:
                 print(f"Error en el hilo de descubrimiento: {e}")
                 break
+    
     def discover_server(self):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1) #Permite broadcast
@@ -417,16 +306,83 @@ class ChordNode:
                 except socket.timeout:
                     print("No se encontraron servidores en el tiempo especificado.")
                     return None  # No se encontró ningún servidor
+
         except Exception as e:
             print(f"Error durante el descubrimiento: {e}")
             return None
         finally:
             sock.close()
 
-ip = socket.gethostbyname(socket.gethostname())
-#print(sys.argv)
-#if ip != '10.0.11.2':
-#    other_ip = '10.0.11.2'
-#    node = ChordNode(ip, other_ip)
-#else:
-#node = ChordNode(ip)
+    def store_key(self, key, value):
+        key_hash = getShaRepr(key)
+        print("key: ", key, "hash: ", key_hash)
+        if self._inrange(key_hash, self.id, self.succ.id):
+            self.data[key] = value
+        else:
+            node = self.closest_preceding_finger(key_hash)
+            print("node_succ_key: ", node.id)
+            node.store_key(key, value)
+
+    def start_server(self):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            s.bind((self.ip, self.port))
+            s.listen(10)
+
+            while True:
+                conn, addr = s.accept()
+                #print(f'new connection from {addr}' )
+                threading.Thread(target=self.serve_client, args=(conn,), daemon=True).start() 
+    def serve_client(self, conn: socket.socket):
+        data = conn.recv(1024).decode().split(',')
+
+        data_resp = None
+        option = int(data[0])
+
+        if option == FIND_SUCCESSOR:
+            id = int(data[1])
+            data_resp = self.find_succ(id)
+        elif option == FIND_PREDECESSOR:
+            id = int(data[1])
+            data_resp = self.find_pred(id)
+        elif option == GET_SUCCESSOR:
+            data_resp = self.succ
+        elif option == GET_PREDECESSOR:
+            data_resp = self.pred
+        elif option == NOTIFY:
+            id = int(data[1])
+            ip = data[2]
+            self.notify(ChordNodeReference(ip, self.port))
+        elif option == CLOSEST_PRECEDING_FINGER:
+            id = int(data[1])
+            data_resp = self.closest_preceding_finger(id)
+        elif option == NOTIFY1:
+            id = int(data[1])
+            ip = data[2]
+            self.notify1(ChordNodeReference(ip, self.port))
+        elif option == IS_ALIVE:
+            data_resp = 'alive'
+        elif option == STORE_KEY:
+            print(data)
+            key, value = data[1], data[2]
+            self.store_key(key, value)
+            print(self.data)
+            conn.sendall(self.data)
+        if data_resp == 'alive':
+            response = data_resp.encode()
+            conn.sendall(response)
+        elif data_resp:
+            response = f'{data_resp.id},{data_resp.ip}'.encode()
+            conn.sendall(response)
+        conn.close()
+
+
+#if __name__ == "__main__":
+#    ip = socket.gethostbyname(socket.gethostname())
+#    #if len(sys.argv) >= 2:
+#    #    other_ip = sys.argv[1]
+#    #    ChordNode(ip, other_ip)
+#    #else:
+#    #    ChordNode(ip)
+#
+#    node = ChordNode(ip)
