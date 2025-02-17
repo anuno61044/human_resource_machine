@@ -10,6 +10,4 @@ COPY ./docker/frontend.sh ./
 
 RUN chmod +x ./frontend.sh
 
-FROM python:3.9-slim
-RUN pip install requests
-ENTRYPOINT ["sh", "-c", "sh /app/frontend.sh && python proxy.py & exec python -m http.server 80 & npm run dev"]
+ENTRYPOINT ["sh", "-c", "sh /app/frontend.sh && node proxy.js & npm run dev"]
