@@ -10,10 +10,20 @@ from rest_framework.response import Response
 from rest_framework import status
 from .models import Agent
 from .serializer import AgentSerializer
+from .Util import ChordNode, ChordNodeReference, getShaRepr
 
 BROADCAST_PORT = 50000 # Puedes cambiarlo
 SERVER_IP = socket.gethostbyname(socket.gethostname())
 BROADCAST_ADDRESS = '<broadcast>' 
+FIND_SUCCESSOR = 1
+FIND_PREDECESSOR = 2
+GET_SUCCESSOR = 3
+GET_PREDECESSOR = 4
+NOTIFY = 5
+CLOSEST_PRECEDING_FINGER = 7
+IS_ALIVE = 8
+NOTIFY1 = 9
+STORE_KEY = 10
 
 @api_view(['GET'])
 def get_agents(request):
@@ -33,40 +43,284 @@ def get_agents(request):
     
     return Response(serializer.data)
 
+@api_view(['GET'])
+def get_all_agents(request):
+    all_agents = []
+    seen_names = set()  # Para rastrear agentes ya vistos
+    
+    local_agents = Agent.objects.all()  # Obtener todos los objetos
+    for agent in local_agents:
+        if agent.name not in seen_names:
+            all_agents.append(AgentSerializer(agent).data)
+            seen_names.add(agent.name)
+    current_node_ip = node.ip
+    next_node_ip = node.succ
+
+    while next_node_ip.ip != current_node_ip:
+        logger.error(f"ip en get_agent: {next_node_ip.ip}")
+        try:
+            next_node_ip.succ
+        except:
+            next_node_ip = node.succ
+            time.sleep(3)
+            continue
+        remote_agents = get_agent_from_server(next_node_ip.ip)
+        # Agregar funcionalidades únicas a la lista
+        for agent_data in remote_agents:
+            if agent_data['name'] not in seen_names:
+                all_agents.append(agent_data)
+                seen_names.add(agent_data['name'])
+        next_node_ip = next_node_ip.succ
+    return Response(all_agents)
+
 @api_view(['POST'])
 def create_agent(request):
-    print(request.data["name"])
     serializer = AgentSerializer(data=request.data)
-    if serializer.is_valid():
-        serializer.save()
+    logger.error("entro en create Agent")
+    serializer.is_valid()
+    try:
+        logger.error("fue valido")
+        key_hash = getShaRepr(request.data['name'])
+        logger.error(f"key_hash_agent: {key_hash}")
+        if node._inrange(key_hash, node.id, node.succ.id):
+            logger.error("entro en inrange_agent")
+            if serializer.is_valid():
+                agent = serializer.save()
+
+            while True:
+                try:
+                    response = send_agent1(node.pred.ip, name= request.data['name'], belongs="2")
+                except:
+                    time.sleep(1)
+                    continue
+                break
+
+            while True:
+                try:
+                    response = send_agent1(node.pred2.ip, name= request.data['name'], belongs="3")
+                except:
+                    time.sleep(1)
+                    continue
+                break
+        else:
+            node1 = node.closest_preceding_finger(key_hash)
+            logger.error("no estaba en el rango_agent")
+            logger.error(f"node1: {node1}")
+            url3 = f'http://{node1.ip}:8000/appAgent/agent/create/'
+            response = requests.post(url3, json=request.data)
+        
         return Response(serializer.data, status=status.HTTP_201_CREATED)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    except:
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['POST'])
+def create1(request):
+    name = request.data.get('name')  # Obtener el nombre del agente
+    belongs = request.data.get('belongs') # Obtener el belongs
+
+    if not name or not belongs:
+        return Response({'error': 'Name and belongs are required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        # Intentar obtener la funcionalidad existente
+        agent = Agent.objects.get(pk=name)
+
+        if agent.belongs == belongs:
+            # Ya existe y tiene el mismo belongs, no hacer nada
+            serializer = AgentSerializer(agent) # Serializar el agente existente
+            return Response(serializer.data, status=status.HTTP_200_OK)  # o status.HTTP_204_NO_CONTENT
+
+        else:
+            # Ya existe pero con diferente belongs, actualizar
+            agent.belongs = belongs
+            agent.save()  # Guardar la funcionalidad actualizada
+            serializer = AgentSerializer(agent) # Serializar la funcionalidad actualizada
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+    except Agent.DoesNotExist:
+        # El agente no existe, crearlo
+        serializer = AgentSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['GET', 'PUT', 'DELETE'])
 def agent_detail(request,pk):
-    try:
-        agent = Agent.objects.get(pk=pk)
-    except Agent.DoesNotExist:
-        return Response(status=status.HTTP_404_NOT_FOUND)
+    key_hash = getShaRepr(pk)
     
     if request.method == 'GET':
-        print(agent.pythonCode)
-        serializer = AgentSerializer(agent)
-        return Response(serializer.data)
+        if node._inrange(key_hash, node.id, node.succ.id):
+            agent = Agent.objects.get(pk=pk)
+            serializer = AgentSerializer(agent)
+            return Response(serializer.data)
+        else:
+            node1 = node.closest_preceding_finger(key_hash)
+            url = f'http://{node1.ip}:8000/appAgent/agent/{pk}'
+            response = requests.get(url)
+            return Response(response)
     
     elif request.method == 'PUT':
-        serializer = AgentSerializer(agent, data=request.data)
-        if serializer.is_valid():
-            agent.delete()
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+        if node._inrange(key_hash, node.id, node.succ.id):
+            agent = Agent.objects.get(pk=pk)
+            serializer = AgentSerializer(agent, data=request.data)
+            if serializer.is_valid():
+                agent.delete()
+                serializer.save()
+                url = f'http://{node.pred.ip}:8000/appAgent/agent/put1/{pk}'
+                requests.put(url)
+                url = f'http://{node.pred2.ip}:8000/appAgent/agent/put1/{pk}'
+                requests.put(url)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            node1 = node.closest_preceding_finger(key_hash)
+            url = f'http://{node1.ip}:8000/appAgent/agent/{pk}'
+            response = requests.put(url)
+            return Response(response)
     
     elif request.method == 'DELETE':
-        agent.delete()
+        if node._inrange(key_hash, node.id, node.succ.id):
+            agent = Agent.objects.get(pk=pk)
+            agent.delete()
+            url = f'http://{node.pred.ip}:8000/appAgent/agent/delete1/{pk}'
+            requests.delete(url)
+            url = f'http://{node.pred2.ip}:8000/appAgent/agent/delete1/{pk}'
+            requests.delete(url)
+        else:
+            node1 = node.closest_preceding_finger(key_hash)
+            url = f'http://{node1.ip}:8000/appAgent/agent/{pk}'
+            response = requests.delete(url)
         return Response(status=status.HTTP_204_NO_CONTENT)
-  
+
+
+@api_view(['DELETE'])
+def delete1(request,pk):
+    agent = Agent.objects.get(pk=pk)
+    agent.delete()
+    return Response(status=status.HTTP_204_NO_CONTENT)
+
+@api_view(['PUT'])
+def put1(request,pk):
+    agent = Agent.objects.get(pk=pk)
+    serializer = AgentSerializer(agent, data=request.data)
+    if serializer.is_valid():
+        agent.delete()
+        serializer.save()
+        return Response(serializer.data)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+@api_view(['POST'])
+def replicate_agents(request):
+    """
+    Replicates agents to another server based on SHA-1 hash and updates 'pertenece' to "1".
+
+    Args:
+        target_ip (str): The IP address of the server to replicate to.
+        threshold (int): The minimum SHA-1 hash value for replication.
+    """
+    target_ip, threshold = request.data['target_ip'], request.data['threshold']
+    id = getShaRepr(ip)
+    agents = Agent.objects.all()  # Get all Agents
+    for agent in agents:
+        sha_repr = getShaRepr(agent.name)
+        if sha_repr > threshold or sha_repr < id:
+            # Prepare the data for the POST request
+            data = AgentSerializer(agent).data  # Serialize the object
+            #data['pertenece'] = '1'  # Set pertenece to "1" *before* sending
+
+            # Construct the URL for the POST endpoint on the target server
+            url = f"http://{target_ip}:8000/appAgent/agent/create1"
+
+            try:
+                # Send the POST request
+                response = requests.post(url, json=data)  # Use json=data for sending JSON
+
+                # Check the response status
+                if response.status_code == 201:
+                    print(f"Agnet '{agent.name}' replicated successfully to {target_ip} and pertenece set to '1'")
+                else:
+                    print(f"Error replicating functionality '{agent.name}' to {target_ip}: {response.status_code} - {response.text}")  # Imprime el texto de la respuesta
+            except requests.exceptions.RequestException as e:
+                print(f"Error connecting to {target_ip}: {e}")
+            
+            if agent.belongs == "3":
+                agent.delete()
+            elif agent.belongs == "2":
+                agent.belongs = "3"
+                agent.save()
+            elif agent.belongs == "1":
+                agent.belongs = "2"
+                agent.save()
+
+    return Response(status=status.HTTP_200_OK)
+
+@api_view(['POST'])
+def delte_agent(request):
+    threshold = request.data['threshold']
+    agents = Agent.objects.all()
+
+    for agent in agents:
+        id = getShaRepr(agent.name)
+        if agent.belongs == "3":
+            agent.delete()
+        elif agent.belongs == "2" and id > threshold:
+            agent.belongs = "3"
+            agent.save() 
+
+    return Response(status=status.HTTP_200_OK)
+
+@api_view(['POST'])
+def update_succ(request):
+    local_agents = Agent.objects.all()  # Obtener todos los objetos
+    for agent in local_agents:
+        if agent.belongs == "2":
+            while True:
+                try:
+                    send_agent1(node.pred2.ip, name=agent.name, belongs= "3")
+                    break
+                except:
+                    time.sleep(1)
+            while True:
+                try:
+                    send_agent1(node.pred.ip, name=agent.name, belongs= "2")
+                    break
+                except:
+                    time.sleep(1)
+
+            agent.belongs = "1"
+            agent.save()
+        elif agent.belongs == "3":
+            agent.belongs = "2"
+            agent.save()
+    
+    return Response(status=status.HTTP_200_OK)
+
+@api_view(['POST'])
+def update_pred(request):
+    local_agents = Agent.objects.all()  # Obtener todos los objetos
+    for agent in local_agents:
+        if agent.belongs == "1":
+            while True:
+                try:
+                    send_agent1(node.pred2.ip, name=agent.name, belongs= "3")
+                    break
+                except:
+                    time.sleep(1)
+            while True:
+                try:
+                    send_agent1(node.pred.ip, name=agent.name, belongs= "2")
+                    break
+                except:
+                    time.sleep(1)
+
+            agent.belongs = "1"
+            agent.save()
+        elif agent.belongs == "3":
+            agent.belongs = "2"
+            agent.save()
+    
+    return Response(status=status.HTTP_200_OK)
+
 @api_view(['POST'])
 def chord(request):
 
@@ -87,7 +341,6 @@ def chord(request):
         data_resp = node.succ
     elif option == GET_PREDECESSOR:
         data_resp = node.pred
-        print("node_pred: ", node.pred)
     elif option == NOTIFY:
         id = int(data[0])
         ip = data[1]
@@ -116,317 +369,33 @@ def chord(request):
         return response
     return Response(data_resp) 
 
+
 ########################################################################################
+def send_agent1(node_ip, **kwargs):
+    url = f'http://{node_ip}:8000/appAgent/agent/create1/'
+    response = requests.post(url, json=kwargs)
+    return response
+
+def get_agent_from_server(ip):
+    """Obtiene agentes de un servidor específico."""
+    try:
+        url = f"http://{ip}:8000/appAgent/agent_server/"  # Ajusta el puerto si es diferente
+        response = requests.get(url)
+        response.raise_for_status()  # Lanza una excepción para códigos de error HTTP
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        print(f"Error al obtener agentes de {ip}: {e}")
+        return []  # En caso de error, devuelve una lista vacía.
 
 
 #######################################################################################
-def send_data(node_ip, **kwargs):
-    #try:
-    url = f"http://{node_ip}:8000/appAgent/agent/chord/"
-    response = requests.post(url, json=kwargs)
-    return response
-    #except:
-    #    logger.error(f"Error en Remote Call")
-        #return None
 
-# Operation codes
-FIND_SUCCESSOR = 1
-FIND_PREDECESSOR = 2
-GET_SUCCESSOR = 3
-GET_PREDECESSOR = 4
-NOTIFY = 5
-CLOSEST_PRECEDING_FINGER = 7
-IS_ALIVE = 8
-NOTIFY1 = 9
-STORE_KEY = 10
-
-def getShaRepr(data: str):
-    return int(hashlib.sha1(data.encode()).hexdigest(),16)
-
-class ChordNodeReference:
-    def __init__(self, ip: str, port: int = 4001):
-        self.id = getShaRepr(ip)
-        self.ip = ip
-        self.port = port
-
-    def find_successor(self, id: int) -> 'ChordNodeReference':
-        response = send_data(self.ip, op=FIND_SUCCESSOR,data=str(id)).json().split(',')
-        #logger.error(f"find_succesor: {response.data}")
-        
-        return ChordNodeReference(response[1], self.port)
-
-    def find_predecessor(self, id: int) -> 'ChordNodeReference':
-        response = send_data(self.ip,op=FIND_PREDECESSOR,data=str(id)).json().split(',')
-        return ChordNodeReference(response[1], self.port)
-
-    @property
-    def succ(self) -> 'ChordNodeReference':
-        response = send_data(self.ip, op= GET_SUCCESSOR, data = None).json().split(',')
-        return ChordNodeReference(response[1], self.port)
-
-    @property
-    def pred(self) -> 'ChordNodeReference':
-        response = send_data(self.ip, op=GET_PREDECESSOR, data=None).json().split(',')
-        return ChordNodeReference(response[1], self.port)
-
-    def notify(self, node: 'ChordNodeReference'):
-        send_data(self.ip, op=NOTIFY, data=f'{node.id},{node.ip}')
-
-    def notify1(self, node: 'ChordNodeReference'):
-        send_data(self.ip, op=NOTIFY1, data=f'{node.id},{node.ip}')
-
-    def closest_preceding_finger(self, id: int) -> 'ChordNodeReference':
-        response = send_data(self.ip, op=CLOSEST_PRECEDING_FINGER, data=str(id)).json().split(',')
-        return ChordNodeReference(response[1], self.port)
-
-    def alive(self):
-        response = send_data(self.ip, op=IS_ALIVE).json().split(',')
-        return response
-    
-    def store_key(self, key: str, value: str):
-        send_data(self.ip, op=STORE_KEY, data=f'{key},{value}')
-
-    def __str__(self) -> str:
-        return f'{self.id},{self.ip},{self.port}'
-
-    def __repr__(self) -> str:
-        return self.__str__()
-
-class ChordNode:
-    def __init__(self, ip: str, peerId = None, port: int = 8000, m: int = 160):
-        self.id = getShaRepr(ip)
-        self.ip = ip
-        self.port = port
-        self.ref = ChordNodeReference(self.ip, self.port)
-        self.pred = self.ref  # Initial predecessor is itself
-        self.m = m  # Number of bits in the hash/key space
-        self.finger = [self.ref] * self.m  # Finger table
-        self.lock = threading.Lock()
-        self.succ2 = self.ref
-        self.succ3 = self.ref
-        self.data = {}
-
-        threading.Thread(target=self.stabilize, daemon=True).start()  # Start stabilize thread
-        threading.Thread(target=self.fix_fingers, daemon=True).start()  # Start fix fingers thread
-
-        #if peerId is not None:
-        #    threading.Thread(target=self.join, args=(ChordNodeReference(peerId, self.port),), daemon=True).start()
-
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Permite reutilizar la dirección
-        sock.bind(('', BROADCAST_PORT))
-
-        discovery_thread = threading.Thread(target=self.handle_discovery, args=(sock,))
-        discovery_thread.daemon = True  # El hilo se cierra cuando el programa principal termina
-        discovery_thread.start()
-        self.new_ip = self.discover_server()
-        print("discovery_ip: ", self.new_ip)
-        if self.new_ip is not None:
-            threading.Thread(target=self.join, args=(ChordNodeReference(self.new_ip, self.port),), daemon=True).start()
-    @property
-    def succ(self):
-        return self.finger[0]
-    
-    @succ.setter
-    def succ(self, node: 'ChordNodeReference'):
-        with self.lock:
-            self.finger[0] = node
-
-    def _inbetween(self, k: int, start: int, end: int) -> bool:
-        """Check if k is in the interval [start, end)."""
-        #print(end < start, start <= k, k < end)
-
-        k = k % 2 ** self.m
-        start = start % 2 ** self.m
-        end = end % 2 ** self.m
-        if start < end:
-            return start <= k < end
-        return start <= k or k < end
-    
-    def _inrange(self, k: int, start: int, end: int) -> bool:
-        """Check if k is in the interval (start, end)."""
-        _start = (start + 1) % 2 ** self.m
-        return self._inbetween(k, _start, end)
-    
-    def _inbetweencomp(self, k: int, start: int, end: int) -> bool:
-        """Check if k is in the interval (start, end]."""
-        _end = (end - 1) % 2 ** self.m 
-        return self._inbetween(k, start, _end)
-
-    def find_succ(self, id: int) -> 'ChordNodeReference':
-        node = self.find_pred(id)  # Find predecessor of id
-        return node.succ  # Return successor of that node
-
-    def find_pred(self, id: int) -> 'ChordNodeReference':
-        node = self
-        try:
-            if node.id == self.succ.id:
-                return node
-        except:
-            print("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
-        x, a = node.succ.ip, node.succ.id
-        #print('x: ', x)
-        #print(f"in bteween {id}, {node.id} {node.succ.id} {self._inbetweencomp(id, node.id, node.succ.id)}")
-        while not self._inbetweencomp(id, node.id, node.succ.id):
-            node = node.closest_preceding_finger(id)
-            if node.id == self.id:
-                break
-            
-        #print(f"closest finger: {node.id} {node.ip}")
-        return node
-
-    def closest_preceding_finger(self, id: int) -> 'ChordNodeReference':
-        node = None
-        for i in range(self.m - 1, -1, -1):
-            #if self.finger[i].id != self.id and self._inrange(self.finger[i].id, self.id, id):
-            try:
-                if node == self.finger[i]:
-                    continue
-                self.finger[i].succ
-                if self._inrange(self.finger[i].id, self.id, id):
-                    return self.finger[i] if self.finger[i].id != self.id else self
-            except:
-                node = self.finger[i]
-                continue    
-        return self
-
-    def join(self, node: 'ChordNodeReference'):
-        time.sleep(5)
-        """Join a Chord network using 'node' as an entry point."""
-        self.pred = self.ref
-        logger.error("before find succc")
-        self.succ = node.find_successor(self.id)
-        self.succ2 = self.succ.succ
-        self.succ3 = self.succ2.succ
-        #print(self.succ)
-        logger.error(f"self.succ: {self.succ} self.succ2: {self.succ2}")
-
-    def stabilize(self):
-        time.sleep(5)
-
-        """Regular check for correct Chord structure."""
-        while True:
-            logger.error(f'self.succ: {self.succ}')
-            try:
-                if self.succ:
-                    print(self.succ)
-                    x = self.succ.pred
-                    if x.id != self.id:
-                        if self.succ.id == self.id or self._inrange(x.id, self.id, self.succ.id):
-                            self.succ = x
-                    self.succ2 = self.succ.succ
-                    self.succ.notify(self.ref)
-            except Exception as e:
-                try:
-                    logger.error("entro en el try")
-                    x = self.succ2
-                    self.succ = x
-                    self.succ2 = self.succ.succ
-                    #self.succ2 = x.succ
-                    self.succ.notify1(ChordNodeReference(self.ip, self.port))
-                except:
-                    try:
-                        x = self.succ3
-                        self.succ = x
-                        self.succ2 = self.succ.succ
-                        self.succ3.notify1(self.ref)
-                    except:
-                        print(f"Error in stabilize: {e}")
-            try:
-                #self.succ2 = self.succ.succ
-                self.succ3 = self.succ.succ.succ
-            except:
-                try:
-                    self.succ3 = self.succ3.succ
-                except:
-                    time.sleep(1)
-                    continue
-
-            logger.error(f"successor : {self.succ}  succ2 {self.succ2} succ3 {self.succ3} predecessor {self.pred}")
-            time.sleep(5)
-
-    def notify(self, node: 'ChordNodeReference'):
-        logger.error(f"en notify, yo: {self.ip} el entrante: {node.ip}")
-        if node.id == self.id:
-            return
-        print(f"notify with node {node} self {self.ref} pred {self.pred}")
-        if (self.pred.id == self.id) or self._inrange(node.id, self.pred.id, self.id):
-            self.pred = node
-    
-    def notify1(self, node: 'ChordNodeReference'):
-        self.pred = node
-        logger.error(f"new notify por node {node} pred {self.pred}")
-    
-    def fix_fingers(self):
-        time.sleep(5)
-        while True:
-            for i in range(self.m - 1, -1, -1):
-                self.next = i
-                with self.lock:
-                    self.finger[self.next] = self.find_succ((self.id + 2 ** self.next) % (2 ** self.m))
-            time.sleep(10)
-    
-    def store_key(self, key, value):
-        key_hash = getShaRepr(key)
-        print("key: ", key, "hash: ", key_hash)
-        if self._inrange(key_hash, self.id, self.succ.id):
-            self.data[key] = value
-        else:
-            node = self.closest_preceding_finger(key_hash)
-            print("node_succ_key: ", node.id)
-            node.store_key(key, value)
-
-    def handle_discovery(self, sock):
-        while True:
-            try:
-                data, addr = sock.recvfrom(1024)
-                message = data.decode('utf-8')
-                print(f"Recibido mensaje de broadcast: {message} de {addr}")
-
-                # Si el mensaje es una solicitud de descubrimiento, responde
-                if message == "DISCOVER_REQUEST":
-                    response = f"SERVER_IP:{SERVER_IP}"
-                    sock.sendto(response.encode('utf-8'), addr)
-            except Exception as e:
-                print(f"Error en el hilo de descubrimiento: {e}")
-                break
-    def discover_server(self):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1) #Permite broadcast
-
-        sock.settimeout(5)  # Tiempo máximo para esperar una respuesta
-
-        message = "DISCOVER_REQUEST"
-        try:
-            sock.sendto(message.encode('utf-8'), (BROADCAST_ADDRESS, BROADCAST_PORT))
-            print("Enviando solicitud de descubrimiento por broadcast...")
-            while True:
-                try:
-                    data, addr = sock.recvfrom(1024)
-                    response = data.decode('utf-8')
-                    print(f"Recibido respuesta de {addr}: {response}")
-
-                    if response.startswith("SERVER_IP:"):
-                        server_ip = response.split(":")[1]
-                        if server_ip == self.ip:
-                            continue
-                        print("server_ip: ", server_ip, "self.ip: ", self.ip)
-                        print(f"Servidor encontrado en la IP: {server_ip}")
-                        return server_ip # Devuelve la IP del primer servidor encontrado
-
-                except socket.timeout:
-                    print("No se encontraron servidores en el tiempo especificado.")
-                    return None  # No se encontró ningún servidor
-        except Exception as e:
-            print(f"Error durante el descubrimiento: {e}")
-            return None
-        finally:
-            sock.close()
-
+from django.core.management import call_command
+print("Resetting the database...")
+call_command('flush', interactive=False)  # Limpia la base de datos
+call_command('migrate')  # Aplica las migraciones
+#Opcional: Cargar datos de prueba
+#call_command('loaddata', 'tu_archivo_initial_data.json') #Reemplaza tu_archivo_initial_data.json
+print("Database reset complete.")
 ip = socket.gethostbyname(socket.gethostname())
-#print(sys.argv)
-#if ip != '10.0.11.2':
-#    other_ip = '10.0.11.2'
-#    node = ChordNode(ip, other_ip)
-#else:
-#node = ChordNode(ip)
+node = ChordNode(ip)

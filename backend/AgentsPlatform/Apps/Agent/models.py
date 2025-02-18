@@ -7,3 +7,4 @@ class Agent(models.Model):
     pythonCode = models.CharField(max_length=10000)
     function = models.ManyToManyField(Functionality)
     _type = models.BooleanField(default=True)
+    belongs = models.CharField(max_length=50, default="1")
