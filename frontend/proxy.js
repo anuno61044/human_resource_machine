@@ -1,16 +1,10 @@
 import http from 'http';
 import httpProxy from 'http-proxy';
-import dgram from 'dgram'; // Para comunicación UDP (Multicast)
 
-let targetHost = '10.0.11.2'; // Backend IP
+const targetHost = '10.0.11.2'; // Backend IP
 const targetPort = 8000;
-const multicastAddress = '224.0.0.1'; // Dirección Multicast
-const multicastPort = 10000; // Puerto Multicast
-const localPort = 8001; // Puerto para recibir la confirmación
 
 const proxy = httpProxy.createProxyServer({});
-
-
 
 // Función para enviar mensaje multicast y esperar confirmación
 // async function sendMulticastMessage(message) {
@@ -57,9 +51,11 @@ const proxy = httpProxy.createProxyServer({});
 //   });
 // }
 
+const server = http.createServer((req, res) => {
+  
+  console.log(`url = ${targetHost}:${targetPort}`);
+  console.log(`request = ${req.url}`);
 
-
-const server = http.createServer(async (req, res) => {
   // if (!req.multicastSent) {
   //   try {
   //     if (req.url !== '/favicon.ico') {
@@ -80,20 +76,7 @@ const server = http.createServer(async (req, res) => {
   //   }
   // }
 
-  // Configurar CORS
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, DELETE, PUT');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-  // Manejar solicitudes OPTIONS
-  if (req.method === 'OPTIONS') {
-    res.writeHead(200);
-    res.end();
-    return;
-  }
-
-  // Reenviar solicitud al backend
-  proxy.web(req, res, { target: `${targetHost}:${targetPort}` }, (err) => {
+  proxy.web(req, res, { target: `http://${targetHost}:${targetPort}` }, (err) => {
     if (err) {
       console.error('Error al reenviar la solicitud:', err);
       res.writeHead(500, { 'Content-Type': 'text/plain' });

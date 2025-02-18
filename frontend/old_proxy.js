@@ -59,7 +59,7 @@ const proxy = httpProxy.createProxyServer({});
 
 
 
-const server = http.createServer((req, res) => {
+const server = http.createServer(async (req, res) => {
   // if (!req.multicastSent) {
   //   try {
   //     if (req.url !== '/favicon.ico') {
@@ -92,8 +92,8 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // Reenviar solicitud al backend
   proxy.web(req, res, { target: `${targetHost}:${targetPort}` }, (err) => {
-    
     if (err) {
       console.error('Error al reenviar la solicitud:', err);
       res.writeHead(500, { 'Content-Type': 'text/plain' });
