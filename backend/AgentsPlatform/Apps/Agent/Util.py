@@ -325,13 +325,13 @@ class ChordNode:
             except Exception as e:
                 try:
                     logger.error("entro en el try")
-                    update_funcionality(self.ip)
-                    update_agent(self.ip)
                     x = self.succ2
                     self.succ = x
                     self.succ2 = self.succ.succ
                     #self.succ2 = x.succ
                     self.succ.notify1(ChordNodeReference(self.ip, self.port))
+                    update_funcionality(self.ip)
+                    update_agent(self.ip)
                 except:
                     try:
                         update_funcionality(self.ip)
@@ -360,6 +360,7 @@ class ChordNode:
         if node.id == self.id:
             return
         print(f"notify with node {node} self {self.ref} pred {self.pred}")
+        
         if (self.pred.id == self.id) or self._inrange(node.id, self.pred.id, self.id):
             self.pred = node
         while True:
@@ -369,8 +370,9 @@ class ChordNode:
                 break
             except:
                 time.sleep(1)
-        update_funcionality_pred(self.ip)
-        update_agent_pred(self.ip)
+        if self.pred.ip != self.ip:
+            update_funcionality_pred(self.ip)
+            update_agent_pred(self.ip)
 
     def notify1(self, node: 'ChordNodeReference'):
         self.pred = node
@@ -381,8 +383,9 @@ class ChordNode:
                 break
             except:
                 time.sleep(1)
-        update_funcionality_pred(self.ip)
-        update_agent_pred(self.ip)
+        if self.pred.ip != self.ip:
+            update_funcionality_pred(self.ip)
+            update_agent_pred(self.ip)
         logger.error(f"new notify por node {node} pred {self.pred}")
     
     def fix_fingers(self):

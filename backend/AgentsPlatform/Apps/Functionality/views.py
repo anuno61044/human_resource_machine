@@ -58,22 +58,22 @@ def create_functionality(request):
         if node._inrange(key_hash, node.id, node.succ.id):
             logger.error("entro en inrange")
             funcionality = serializer.save()
-            
-            while True:
-                try:
-                    response = send_funcionality1(node.pred.ip, name= request.data['name'], belongs="2")
-                except:
-                    time.sleep(1)
-                    continue
-                break
-
-            while True:
-                try:
-                    response = send_funcionality1(node.pred2.ip, name= request.data['name'], belongs="3")
-                except:
-                    time.sleep(1)
-                    continue
-                break
+            if node.pred.ip != node.ip:
+                while True:
+                    try:
+                        response = send_funcionality1(node.pred.ip, name= request.data['name'], belongs="2")
+                    except:
+                        time.sleep(1)
+                        continue
+                    break
+            if node.pred2.ip != node.ip:
+                while True:
+                    try:
+                        response = send_funcionality1(node.pred2.ip, name= request.data['name'], belongs="3")
+                    except:
+                        time.sleep(1)
+                        continue
+                    break
         else:
             node1 = node.closest_preceding_finger(key_hash)
             logger.error("no estaba en el rango")
@@ -92,7 +92,7 @@ def create1(request):
 
     if not name or not belongs:
         return Response({'error': 'Name and belongs are required.'}, status=status.HTTP_400_BAD_REQUEST)
-
+    logger.error(f"entro en create1 con func_name: {name}")
     try:
         # Intentar obtener la funcionalidad existente
         functionality = Functionality.objects.get(pk=name)
@@ -233,12 +233,14 @@ def update_succ(request):
         if func.belongs == "2":
             while True:
                 try:
+                    logger.error(f"intentando enviar func a : {node.pred2.ip}")
                     send_funcionality1(node.pred2.ip, name=func.name, belongs= "3")
                     break
                 except:
                     time.sleep(1)
             while True:
                 try:
+                    logger.error(f"intentando enviar func a : {node.pred.ip}")
                     send_funcionality1(node.pred.ip, name=func.name, belongs= "2")
                     break
                 except:
@@ -256,10 +258,14 @@ def update_succ(request):
 def update_pred(request):
     local_functionalities = Functionality.objects.all()  # Obtener todos los objetos
     for func in local_functionalities:
+        logger.error("entro en update_pred")
+        logger.error(f"se va a enviar la func: {func.name}")
+        logger.error(f"func_belongs: {func.belongs}")
         if func.belongs == "1":
             while True:
                 try:
                     send_funcionality1(node.pred2.ip, name=func.name, belongs= "3")
+                    logger.error(f"se envio a : {node.pred2.ip}")
                     break
                 except:
                     time.sleep(1)
