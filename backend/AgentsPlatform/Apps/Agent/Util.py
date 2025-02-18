@@ -357,12 +357,14 @@ class ChordNode:
 
     def notify(self, node: 'ChordNodeReference'):
         logger.error(f"en notify, yo: {self.ip} el entrante: {node.ip}")
+        a = False
         if node.id == self.id:
             return
         print(f"notify with node {node} self {self.ref} pred {self.pred}")
         
         if (self.pred.id == self.id) or self._inrange(node.id, self.pred.id, self.id):
             self.pred = node
+            a = True
         while True:
             try:
                 self.pred.pred
@@ -370,12 +372,15 @@ class ChordNode:
                 break
             except:
                 time.sleep(1)
-        if self.pred.ip != self.ip:
+        if self.pred.ip != self.ip and a == True:
             update_funcionality_pred(self.ip)
             update_agent_pred(self.ip)
 
     def notify1(self, node: 'ChordNodeReference'):
         self.pred = node
+        a = False
+        if self.pred.ip != node.ip:
+            a = True
         while True:
             try:
                 node.pred
@@ -383,7 +388,7 @@ class ChordNode:
                 break
             except:
                 time.sleep(1)
-        if self.pred.ip != self.ip:
+        if self.pred.ip != self.ip and a == True:
             update_funcionality_pred(self.ip)
             update_agent_pred(self.ip)
         logger.error(f"new notify por node {node} pred {self.pred}")
