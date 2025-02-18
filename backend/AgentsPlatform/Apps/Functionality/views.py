@@ -30,7 +30,7 @@ def get_all_funcionalities(request):
             seen_names.add(func.name)
     current_node_ip = node.ip
     next_node_ip = node.succ
-
+    logger.error("entro en el get de funcionality")
     while next_node_ip.ip != current_node_ip:
         logger.error(f"ip en get: {next_node_ip.ip}")
         try:
