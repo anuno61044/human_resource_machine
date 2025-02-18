@@ -64,14 +64,19 @@ async function sendMulticastMessage(message, expectedResponses) {
 
 
 const server = http.createServer(async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*'); // Permitir CORS
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
   console.log(`Solicitud recibida: ${req.url}`);
-  let servers_count = 1
-  if 
+
+  let servers_count = req.url === '/appSolution/solution/' ? 3 : 1;
+
   try {
     const clientIp = process.env.CONTAINER_IP || '0.0.0.0';
     console.log(`Enviando solicitud multicast con IP del cliente: ${clientIp}`);
 
-    targetHosts = await sendMulticastMessage(clientIp, 3); // Esperamos respuestas de 2 servidores
+    const targetHosts = await sendMulticastMessage(clientIp, servers_count);
     console.log('Servidores detectados:', targetHosts);
 
     if (targetHosts.length === 0) {
@@ -80,13 +85,10 @@ const server = http.createServer(async (req, res) => {
       res.end('No hay servidores disponibles.');
       return;
     }
-  } catch (error) {
-    console.error('Error en la comunicación multicast:', error);
-  }
 
-  // Crear una lista de promesas para cada servidor detectado
-  const proxyRequests = targetHosts.map((host) => {
-    return new Promise((resolve) => {
+    let responded = false; // Variable para saber si ya respondimos
+
+    targetHosts.forEach((host) => {
       const proxyReq = http.request(
         {
           hostname: host,
@@ -96,38 +98,34 @@ const server = http.createServer(async (req, res) => {
           headers: req.headers,
         },
         (proxyRes) => {
-          let data = '';
+          if (responded) return; // Si ya respondimos, ignoramos las demás respuestas
 
-          proxyRes.on('data', (chunk) => {
-            data += chunk;
-          });
-
-          proxyRes.on('end', () => {
-            console.log(`Respuesta de ${host}:`, data);
-            resolve({ server: host, data });
-          });
+          responded = true; // Marcar que ya respondimos
+          res.writeHead(proxyRes.statusCode, proxyRes.headers); // Enviar los headers originales
+          proxyRes.pipe(res); // Enviar la respuesta al cliente
+          console.log(`✅ Respondiendo al cliente con la respuesta de ${host}`);
         }
       );
 
       proxyReq.on('error', (err) => {
-        console.error(`Error al reenviar la solicitud a ${host}:`, err);
-        resolve(null);
+        console.error(`❌ Error al reenviar la solicitud a ${host}:`, err);
       });
 
-      req.pipe(proxyReq); // Enviar la solicitud original al backend
+      req.pipe(proxyReq); // Enviar la solicitud al backend
     });
-  });
 
-  // Esperar todas las respuestas
-  const results = await Promise.all(proxyRequests);
-  const validResponses = results.filter((result) => result !== null);
-
-  if (validResponses.length > 0) {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(validResponses));
-  } else {
+    // Si después de 3 segundos no hay respuesta, enviar error
+    setTimeout(() => {
+      if (!responded) {
+        console.log('⏳ Timeout: ningún servidor respondió.');
+        res.writeHead(500, { 'Content-Type': 'text/plain' });
+        res.end('Error: Ningún servidor respondió.');
+      }
+    }, 3000);
+  } catch (error) {
+    console.error('❌ Error en la comunicación multicast:', error);
     res.writeHead(500, { 'Content-Type': 'text/plain' });
-    res.end('Error al reenviar la solicitud a los servidores.');
+    res.end('Error en la comunicación multicast.');
   }
 });
 
