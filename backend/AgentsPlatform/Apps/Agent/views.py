@@ -157,9 +157,16 @@ def create1(request):
 
 @api_view(['GET', 'PUT', 'DELETE'])
 def agent_detail(request,pk):
+    
     key_hash = getShaRepr(pk)
     
     if request.method == 'GET':
+        try:
+            agent = Agent.objects.get(pk=pk)
+            serializer = AgentSerializer(agent)
+            return Response(serializer.data)
+        except:
+            5
         if node._inrange(key_hash, node.id, node.succ.id):
             agent = Agent.objects.get(pk=pk)
             serializer = AgentSerializer(agent)

@@ -190,7 +190,7 @@ def replicate_functionalities(request):
             url = f"http://{target_ip}:8000/appFunctionality/functionality/create1"
 
             try:
-                logger.exception("entro en replicate func")
+                logger.exception("entro en replicate")
                 # Send the POST request
                 response = requests.post(url, json=data)  # Use json=data for sending JSON
 

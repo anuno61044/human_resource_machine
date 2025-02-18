@@ -40,10 +40,11 @@ def execute_no_native(agents, _input):
             url = f'http://{node.ip}:8000/appAgent/agent/{a}'
             new_agent1 = requests.get(url)
             new_agent = new_agent1.json()
-            try:
+            if type(new_agent) is not list:
                 nombre = new_agent['name']
-            except:
+            else:
                 nombre = new_agent[0]
+                logger.error(f"nombre: {nom}")
                 new_agent = json.loads(new_agent[0])
             logger.error(f"new_agent: {nombre}")
 
