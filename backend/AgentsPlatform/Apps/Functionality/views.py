@@ -114,6 +114,7 @@ def create1(request):
         serializer = FunctionalitySerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
+            logger.error(f"se creo la funcion: {name}")
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
@@ -189,6 +190,7 @@ def replicate_functionalities(request):
             url = f"http://{target_ip}:8000/appFunctionality/functionality/create1"
 
             try:
+                logger.exception("entro en replicate func")
                 # Send the POST request
                 response = requests.post(url, json=data)  # Use json=data for sending JSON
 
@@ -229,22 +231,33 @@ def delte_funcionality(request):
 @api_view(['POST'])
 def update_succ(request):
     local_functionalities = Functionality.objects.all()  # Obtener todos los objetos
+    a = 0
     for func in local_functionalities:
+
         if func.belongs == "2":
-            while True:
-                try:
-                    logger.error(f"intentando enviar func a : {node.pred2.ip}")
-                    send_funcionality1(node.pred2.ip, name=func.name, belongs= "3")
-                    break
-                except:
-                    time.sleep(1)
-            while True:
-                try:
-                    logger.error(f"intentando enviar func a : {node.pred.ip}")
-                    send_funcionality1(node.pred.ip, name=func.name, belongs= "2")
-                    break
-                except:
-                    time.sleep(1)
+            if a <= 18:
+                a = 0
+                while True:
+                    try:
+                        logger.error(f"intentando enviar func a : {node.pred2.ip}")
+                        send_funcionality1(node.pred2.ip, name=func.name, belongs= "3")
+                        break
+                    except:
+                        time.sleep(3)
+                        a = a + 3
+                        if a >= 18:
+                            break
+                a = 0
+                while True:
+                    try:
+                        logger.error(f"intentando enviar func a : {node.pred.ip}")
+                        send_funcionality1(node.pred.ip, name=func.name, belongs= "2")
+                        break
+                    except:
+                        time.sleep(3)
+                        a = a + 3
+                        if a >= 18:
+                            break
 
             func.belongs = "1"
             func.save()

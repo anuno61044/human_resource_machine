@@ -54,7 +54,7 @@ def update_agent_pred(node_ip, **kwargs):
 def send_data(node_ip, **kwargs):
     #try:
     url = f"http://{node_ip}:8000/appAgent/agent/chord/"
-    response = requests.post(url, json=kwargs)
+    response = requests.post(url, json=kwargs, timeout= 5)
     return response
     #except:
     #    logger.error(f"Error en Remote Call")
@@ -334,12 +334,13 @@ class ChordNode:
                     update_agent(self.ip)
                 except:
                     try:
-                        update_funcionality(self.ip)
-                        update_agent(self.ip)
+                        logger.error("entro en el try mas abajo")
                         x = self.succ3
                         self.succ = x
                         self.succ2 = self.succ.succ
                         self.succ3.notify1(self.ref)
+                        update_funcionality(self.ip)
+                        update_agent(self.ip)
                     except:
                         print(f"Error in stabilize: {e}")
             try:

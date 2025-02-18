@@ -11,6 +11,7 @@ from rest_framework import status
 from .models import Agent
 from .serializer import AgentSerializer
 from .Util import ChordNode, ChordNodeReference, getShaRepr
+from ..Functionality.models import Functionality
 
 BROADCAST_PORT = 50000 # Puedes cambiarlo
 SERVER_IP = socket.gethostbyname(socket.gethostname())
@@ -86,22 +87,25 @@ def create_agent(request):
             logger.error("entro en inrange_agent")
             if serializer.is_valid():
                 agent = serializer.save()
-
-            while True:
-                try:
-                    response = send_agent1(node.pred.ip, name= request.data['name'], belongs="2")
-                except:
-                    time.sleep(1)
-                    continue
-                break
-
-            while True:
-                try:
-                    response = send_agent1(node.pred2.ip, name= request.data['name'], belongs="3")
-                except:
-                    time.sleep(1)
-                    continue
-                break
+            code = request.data['pythonCode']
+            _type1 =  request.data['_type']
+            function1 = request.data['function']
+            if node.pred.ip != node.ip:
+                while True:
+                    try:
+                        response = send_agent1(node.pred.ip, name= request.data['name'], pythonCode = code, function = function1, _type = _type1, belongs="2")
+                    except:
+                        time.sleep(1)
+                        continue
+                    break
+            if node.pred2.ip != node.ip:
+                while True:
+                    try:
+                        response = send_agent1(node.pred2.ip, name= request.data['name'], pythonCode = code, function = function1, _type = _type1, belongs="3")
+                    except:
+                        time.sleep(1)
+                        continue
+                    break
         else:
             node1 = node.closest_preceding_finger(key_hash)
             logger.error("no estaba en el rango_agent")
@@ -139,6 +143,12 @@ def create1(request):
 
     except Agent.DoesNotExist:
         # El agente no existe, crearlo
+        logger.error("se va a crear el agente")
+        try:
+            func = Functionality.objects.get(pk=name)
+            logger.error(f"se encuentra la funcionalidad: {func.name}")
+        except:
+            logger.error("no esta la funcionalidad en create1")
         serializer = AgentSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
@@ -230,7 +240,7 @@ def replicate_agents(request):
 
             # Construct the URL for the POST endpoint on the target server
             url = f"http://{target_ip}:8000/appAgent/agent/create1"
-
+            logger.error("entro en replicate agent")
             try:
                 # Send the POST request
                 response = requests.post(url, json=data)  # Use json=data for sending JSON
@@ -272,20 +282,32 @@ def delte_agent(request):
 @api_view(['POST'])
 def update_succ(request):
     local_agents = Agent.objects.all()  # Obtener todos los objetos
+    a = 0
     for agent in local_agents:
         if agent.belongs == "2":
-            while True:
-                try:
-                    send_agent1(node.pred2.ip, name=agent.name, belongs= "3")
-                    break
-                except:
-                    time.sleep(1)
-            while True:
-                try:
-                    send_agent1(node.pred.ip, name=agent.name, belongs= "2")
-                    break
-                except:
-                    time.sleep(1)
+            if a <= 18:
+                a = 0
+                while True:
+                    try:
+                        function_ids = list(agent.function.values_list('name', flat=True))
+                        send_agent1(node.pred2.ip, name=agent.name, pythonCode = agent.pythonCode, function = function_ids, _type = agent._type, belongs= "3")
+                        break
+                    except:
+                        time.sleep(3)
+                        a = a + 3
+                        if a >= 18:
+                            break
+                a = 0
+                while True:
+                    try:
+                        function_ids = list(agent.function.values_list('name', flat=True))
+                        send_agent1(node.pred.ip, name=agent.name, pythonCode = agent.pythonCode, function = function_ids, _type = agent._type, belongs= "2")
+                        break
+                    except:
+                        time.sleep(3)
+                        a = a + 3
+                        if a >= 18:
+                            break
 
             agent.belongs = "1"
             agent.save()
@@ -298,17 +320,27 @@ def update_succ(request):
 @api_view(['POST'])
 def update_pred(request):
     local_agents = Agent.objects.all()  # Obtener todos los objetos
+    
     for agent in local_agents:
+        logger.error("entro en update_pred de agent")
+        logger.error(f"se va a enviar el agent: {agent.name}")
+        logger.error(f"agent_belongs: {agent.belongs}")
         if agent.belongs == "1":
             while True:
                 try:
-                    send_agent1(node.pred2.ip, name=agent.name, belongs= "3")
+                    function_ids = list(agent.function.values_list('name', flat=True))  # 'id' es el nombre del campo PK en Functionalit
+                    logger.error(f"function_ids: {function_ids}")
+                    send_agent1(node.pred2.ip, name=agent.name, pythonCode = agent.pythonCode, function = function_ids, _type = agent._type, belongs= "3")
+                    logger.error(f"se envio a : {node.pred2.ip}")
                     break
-                except:
+                except Exception as e:
+                    logger.error(f"exception: {e}")
                     time.sleep(1)
             while True:
                 try:
-                    send_agent1(node.pred.ip, name=agent.name, belongs= "2")
+                    function_ids = list(agent.function.values_list('name', flat=True))  # 'id' es el nombre del campo PK en Functionalit
+                    
+                    send_agent1(node.pred.ip, name=agent.name, pythonCode = agent.pythonCode, function = function_ids, _type = agent._type, belongs= "2")
                     break
                 except:
                     time.sleep(1)
