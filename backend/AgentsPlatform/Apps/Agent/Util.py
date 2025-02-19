@@ -343,6 +343,7 @@ class ChordNode:
                         update_agent(self.ip)
                     except:
                         print(f"Error in stabilize: {e}")
+                        continue
             try:
                 #self.succ2 = self.succ.succ
                 self.succ3 = self.succ.succ.succ
