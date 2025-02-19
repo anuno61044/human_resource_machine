@@ -480,15 +480,6 @@ function Home() {
                       </Button>
                       <Button
                         variant="outline"
-                        marginEnd="10px"
-                        color="gray"
-                        fontSize="25px"
-                        onClick={() => handleEditAgent(agent)}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="outline"
                         color="red"
                         fontSize="25px"
                         onClick={() => handleDeleteAgent(agent.name)}
@@ -684,7 +675,7 @@ function Home() {
               {agentShow.id == 0 ? (
                 <Button onClick={handleSubmitAgent}>Create Agent</Button>
               ) : (
-                <Button onClick={handleSubmitAgent}>Edit Agent</Button>
+                <Button variant='ghost'>Code</Button>
               )}
               {!isNativeCode && (
                 <Button marginStart="10px" colorPalette="green" onClick={handleSolution}>
