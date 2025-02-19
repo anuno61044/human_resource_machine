@@ -9,7 +9,7 @@ import struct
 BROADCAST_PORT = 50000 # Puedes cambiarlo
 SERVER_IP = socket.gethostbyname(socket.gethostname())
 BROADCAST_ADDRESS = '<broadcast>' 
-
+COUNT = 0
 
 def send_funcionality(node_ip, **kwargs):
     url = f"http://{node_ip}:8000/appFunctionality/functionality/replicate/"
@@ -373,9 +373,9 @@ class ChordNode:
                 break
             except:
                 time.sleep(1)
-        if self.pred.ip != self.ip and a == True:
-            update_funcionality_pred(self.ip)
-            update_agent_pred(self.ip)
+        #if (self.pred.ip != self.ip and a == True):
+        update_funcionality_pred(self.ip)
+        update_agent_pred(self.ip)
 
     def notify1(self, node: 'ChordNodeReference'):
         self.pred = node
@@ -389,9 +389,9 @@ class ChordNode:
                 break
             except:
                 time.sleep(1)
-        if self.pred.ip != self.ip and a == True:
-            update_funcionality_pred(self.ip)
-            update_agent_pred(self.ip)
+        #if self.pred.ip != self.ip and a == True:
+        update_funcionality_pred(self.ip)
+        update_agent_pred(self.ip)
         logger.error(f"new notify por node {node} pred {self.pred}")
     
     def fix_fingers(self):

@@ -44,7 +44,7 @@ def execute_no_native(agents, _input):
                 nombre = new_agent['name']
             else:
                 nombre = new_agent[0]
-                logger.error(f"nombre: {nom}")
+                logger.error(f"nombre: {nombre}")
                 new_agent = json.loads(new_agent[0])
             logger.error(f"new_agent: {nombre}")
 
