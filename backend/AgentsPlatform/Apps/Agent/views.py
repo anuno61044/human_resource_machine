@@ -86,22 +86,22 @@ def create_agent(request):
             logger.error("entro en inrange_agent")
             if serializer.is_valid():
                 agent = serializer.save()
-
-            while True:
-                try:
-                    response = send_agent1(node.pred.ip, name= request.data['name'], belongs="2")
-                except:
-                    time.sleep(1)
-                    continue
-                break
-
-            while True:
-                try:
-                    response = send_agent1(node.pred2.ip, name= request.data['name'], belongs="3")
-                except:
-                    time.sleep(1)
-                    continue
-                break
+            if node.pred.ip != node.ip:
+                while True:
+                    try:
+                        response = send_agent1(node.pred.ip, name= request.data['name'], belongs="2")
+                    except:
+                        time.sleep(1)
+                        continue
+                    break
+            if node.pred2.ip != node.ip:
+                while True:
+                    try:
+                        response = send_agent1(node.pred2.ip, name= request.data['name'], belongs="3")
+                    except:
+                        time.sleep(1)
+                        continue
+                    break
         else:
             node1 = node.closest_preceding_finger(key_hash)
             logger.error("no estaba en el rango_agent")

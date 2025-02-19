@@ -49,13 +49,13 @@ if %errorlevel% equ 0 (
     echo Container router removed.
 )
 
-docker run -d --rm --name router --cap-add NET_ADMIN -e PYTHONUNBUFFERED=1 router
+docker run -d --name router --cap-add NET_ADMIN -e PYTHONUNBUFFERED=1 router
 echo Container router executed.
 
 docker network connect --ip 10.0.10.254 clients router
 docker network connect --ip 10.0.11.254 servers router
 
-docker run -d --rm --name mcproxy --cap-add NET_ADMIN -e PYTHONUNBUFFERED=1 router
+docker run -d --name mcproxy --cap-add NET_ADMIN -e PYTHONUNBUFFERED=1 router
 echo Container router executed.
 
 docker network connect --ip 10.0.11.253 servers mcproxy
