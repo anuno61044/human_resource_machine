@@ -1,18 +1,13 @@
-# Usa una imagen oficial de Node.js como base
 FROM node:20-alpine
 
-# Establece el directorio de trabajo en el contenedor
 WORKDIR /app
 
-# Copia los archivos package.json y package-lock.json
-COPY ./frontend/package.json ./
-
-# Instala las dependencias
+COPY ./frontend/package*.json ./
 RUN npm install
 
-# Copia el resto de los archivos del proyecto
-COPY ./frontend .
+COPY ./frontend/. ./
+COPY ./docker/frontend.sh ./
 
-COPY docker/frontend.sh .
-CMD app/frontend.sh
-CMD app/frontend/startup.sh
+RUN chmod +x ./frontend.sh
+
+ENTRYPOINT ["sh", "-c", "sh /app/frontend.sh && node proxy.js & npm run dev"]

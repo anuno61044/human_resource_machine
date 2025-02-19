@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 """Django's command-line utility for administrative tasks."""
 import os
+import socket
 import sys
-
+import logging
+logger = logging.getLogger(__name__)
 
 def main():
     """Run administrative tasks."""
@@ -19,4 +21,7 @@ def main():
 
 
 if __name__ == '__main__':
+    logger.error(f'ip: {socket.gethostbyname(socket.gethostname())}')
+    ip = socket.gethostbyname(socket.gethostname())
+    #node = ChordNode(ip)
     main()

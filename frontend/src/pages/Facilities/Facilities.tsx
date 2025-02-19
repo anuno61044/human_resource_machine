@@ -32,11 +32,11 @@ function Facilities() {
     }
   };
 
-  // Función para obtener los agentes
-  const fetchFunctionality = async (id: number) => {
+  // Función para obtener un agente
+  const fetchFunctionality = async (functionality_name: string) => {
     try {
       const response = await axios.get(
-        `http://localhost:8000/appFunctionality/functionality/${id}`
+        `http://localhost:8000/appFunctionality/functionality/${functionality_name}`
       );
       setFunctionality(response.data);
     } catch (err) {
@@ -67,7 +67,7 @@ function Facilities() {
     else {
       try {
         await axios.put(
-          `http://localhost:8000/appFunctionality/functionality/${input_functionality.id}`,
+          `http://localhost:8000/appFunctionality/functionality/${input_functionality.name}`,
           { name: input_functionality.name }
         );
       } catch (err) {
@@ -79,10 +79,10 @@ function Facilities() {
     fetchFunctionalities();
   };
 
-  const deleteFunc = async (id:number) => {
+  const deleteFunc = async (functionality_name:string) => {
     try {
       await axios.delete(
-        `http://localhost:8000/appFunctionality/functionality/${id}`
+        `http://localhost:8000/appFunctionality/functionality/${functionality_name}`
       );
     } catch (err) {
       console.error(err);
@@ -130,7 +130,7 @@ function Facilities() {
                     variant="outline"
                     color="gray"
                     fontSize="25px"
-                    onClick={() => fetchFunctionality(functionality.id)}
+                    onClick={() => fetchFunctionality(functionality.name)}
                   >
                     Edit
                   </Button>
@@ -139,7 +139,7 @@ function Facilities() {
                     color="red"
                     fontSize="25px"
                     marginStart="20px"
-                    onClick={() => deleteFunc(functionality.id)}
+                    onClick={() => deleteFunc(functionality.name)}
                   >
                     Delete
                   </Button>
