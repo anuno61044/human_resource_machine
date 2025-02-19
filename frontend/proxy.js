@@ -99,20 +99,29 @@ const server = http.createServer(async (req, res) => {
         },
         (proxyRes) => {
           if (responded) return; // Si ya respondimos, ignoramos las demás respuestas
-
+    
           responded = true; // Marcar que ya respondimos
-          res.writeHead(proxyRes.statusCode, proxyRes.headers); // Enviar los headers originales
-          proxyRes.pipe(res); // Enviar la respuesta al cliente
-          console.log(`✅ Respondiendo al cliente con la respuesta de ${host}`);
+          let responseData = '';
+    
+          proxyRes.on('data', (chunk) => {
+            responseData += chunk; // Acumular los datos de la respuesta
+          });
+    
+          proxyRes.on('end', () => {
+            console.log(`✅ Respuesta desde ${host}: ${responseData}`); // Mostrar en consola
+            res.writeHead(proxyRes.statusCode, proxyRes.headers); // Enviar headers
+            res.end(responseData); // Enviar la respuesta al cliente
+          });
         }
       );
-
+    
       proxyReq.on('error', (err) => {
         console.error(`❌ Error al reenviar la solicitud a ${host}:`, err);
       });
-
+    
       req.pipe(proxyReq); // Enviar la solicitud al backend
     });
+    
 
     // Si después de 3 segundos no hay respuesta, enviar error
     setTimeout(() => {
@@ -121,7 +130,7 @@ const server = http.createServer(async (req, res) => {
         res.writeHead(500, { 'Content-Type': 'text/plain' });
         res.end('Error: Ningún servidor respondió.');
       }
-    }, 3000);
+    }, 60000);
   } catch (error) {
     console.error('❌ Error en la comunicación multicast:', error);
     res.writeHead(500, { 'Content-Type': 'text/plain' });
